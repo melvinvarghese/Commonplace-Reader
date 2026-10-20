@@ -33,6 +33,8 @@ jobs:
       - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4; includes wrapper validation
       - name: Install compile SDK and Build Tools
         run: sdkmanager 'platforms;android-37.0' 'build-tools;36.0.0'
+      - name: CI result-guard regression tests
+        run: python3 -m unittest discover -s tools -p 'test_*.py' -v
       - name: Unit tests, lint, apps and instrumentation APKs
         run: >-
           ./gradlew --no-daemon --dependency-verification=strict
@@ -86,10 +88,13 @@ jobs:
           arch: x86_64
           target: google_apis
           ram-size: 2048M
+          disk-size: 4096M
           disable-animations: true
           pre-emulator-launch-script: adb start-server
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -show-kernel
-          script: ./gradlew --no-daemon --dependency-verification=strict :app:connectedAndroidxDebugAndroidTest :app:connectedComposepdfDebugAndroidTest
+          script: |
+            ./gradlew --no-daemon --dependency-verification=strict :app:connectedAndroidxDebugAndroidTest :app:connectedComposepdfDebugAndroidTest
+            python3 tools/verify_android_test_results.py app/build/outputs/androidTest-results/connected/debug/flavors
       - name: Collect emulator failure diagnostics
         if: failure()
         run: |

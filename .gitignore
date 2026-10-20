@@ -13,3 +13,6 @@ local.properties
 # Local execution workspaces
 .worktrees/
 .superpowers/
+
+# Local Python test bytecode
+__pycache__/
