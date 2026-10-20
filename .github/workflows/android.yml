@@ -93,8 +93,7 @@ jobs:
           pre-emulator-launch-script: adb start-server
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -show-kernel
           script: |
-            ./gradlew --no-daemon --dependency-verification=strict :app:connectedAndroidxDebugAndroidTest :app:connectedComposepdfDebugAndroidTest
-            python3 tools/verify_android_test_results.py app/build/outputs/androidTest-results/connected/debug/flavors
+            python3 tools/run_emulator_smoke.py
       - name: Collect emulator failure diagnostics
         if: failure()
         run: |

@@ -10,6 +10,8 @@ Both temporary PDF comparison flavors pass local JVM tests and Android lint, and
 
 Not implemented yet: document import, EPUB/PDF reading, durable notes/highlights/bookmarks/progress, Commonplace and Search destinations, Markdown export, backup/restore, or Obsidian integration. This is not a beta or a release-ready APK.
 
+The next CI diagnostic captures live package/storage-service health and direct-launch evidence before emulator shutdown, without changing SDK levels, dependencies or test assertions. These probes are not substitutes for passing instrumentation; Task 2 remains paused pending the API 37 result.
+
 ## Build
 
 Use JDK 17, Android SDK platform `platforms;android-37.0`, and Build Tools `36.0.0`. Set `ANDROID_HOME` to your SDK location (or use an untracked `local.properties`). The checked-in Gradle 9.7.0 wrapper verifies its distribution checksum.
