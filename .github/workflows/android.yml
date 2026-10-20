@@ -46,6 +46,7 @@ jobs:
           name: foundation-checks
           retention-days: 7
           path: |
+            build/reports/
             app/build/reports/
             app/build/test-results/
             app/build/outputs/apk/
@@ -92,5 +93,6 @@ jobs:
           name: shell-smoke-api-${{ matrix.api }}
           retention-days: 7
           path: |
+            build/reports/
             app/build/reports/androidTests/
             app/build/outputs/androidTest-results/
