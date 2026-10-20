@@ -1,0 +1,88 @@
+name: Android foundation
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407 # v3
+      - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4; includes wrapper validation
+      - name: Install compile SDK and Build Tools
+        run: sdkmanager 'platforms;android-37.0' 'build-tools;36.0.0'
+      - name: Unit tests, lint, apps and instrumentation APKs
+        run: >-
+          ./gradlew --no-daemon --dependency-verification=strict
+          :app:testAndroidxDebugUnitTest :app:testComposepdfDebugUnitTest
+          :app:lintAndroidxDebug :app:lintComposepdfDebug
+          :app:assembleAndroidxDebug :app:assembleComposepdfDebug
+          :app:assembleAndroidxDebugAndroidTest :app:assembleComposepdfDebugAndroidTest
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: foundation-checks
+          retention-days: 7
+          path: |
+            app/build/reports/
+            app/build/test-results/
+            app/build/outputs/apk/
+  smoke:
+    needs: checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        api: ['28', '37.0']
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407 # v3
+      - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
+      - name: Install compile SDK and Build Tools
+        run: sdkmanager 'platforms;android-37.0' 'build-tools;36.0.0'
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Launch and navigate both shells
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2
+        with:
+          api-level: ${{ matrix.api }}
+          arch: x86_64
+          target: google_apis
+          disable-animations: true
+          script: ./gradlew --no-daemon --dependency-verification=strict :app:connectedAndroidxDebugAndroidTest :app:connectedComposepdfDebugAndroidTest
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: shell-smoke-api-${{ matrix.api }}
+          retention-days: 7
+          path: |
+            app/build/reports/androidTests/
+            app/build/outputs/androidTest-results/

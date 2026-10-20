@@ -1,0 +1,52 @@
+[versions]
+agp = "9.4.0"
+kotlin = "2.4.20"
+ksp = "2.3.12"
+composeBom = "2026.09.00"
+activity = "1.13.0"
+lifecycle = "2.11.0"
+core = "1.19.0"
+coroutines = "1.11.0"
+room = "2.8.5"
+datastore = "1.2.1"
+readium = "3.4.0"
+androidxPdf = "1.0.0-beta01"
+composePdf = "158.0.8111.0"
+junit = "4.13.2"
+testExtJunit = "1.3.0"
+testRunner = "1.7.0"
+espresso = "3.7.0"
+desugarJdkLibs = "2.1.5"
+
+[libraries]
+composeBom = { module = "androidx.compose:compose-bom", version.ref = "composeBom" }
+activityCompose = { module = "androidx.activity:activity-compose", version.ref = "activity" }
+lifecycleViewmodelCompose = { module = "androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "lifecycle" }
+lifecycleRuntimeCompose = { module = "androidx.lifecycle:lifecycle-runtime-compose", version.ref = "lifecycle" }
+composeUi = { module = "androidx.compose.ui:ui" }
+composeUiGraphics = { module = "androidx.compose.ui:ui-graphics" }
+composeUiTooling = { module = "androidx.compose.ui:ui-tooling" }
+composeUiToolingPreview = { module = "androidx.compose.ui:ui-tooling-preview" }
+composeUiTestJunit4 = { module = "androidx.compose.ui:ui-test-junit4" }
+composeUiTestManifest = { module = "androidx.compose.ui:ui-test-manifest" }
+composeMaterial3 = { module = "androidx.compose.material3:material3" }
+coreKtx = { module = "androidx.core:core-ktx", version.ref = "core" }
+coroutinesAndroid = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "coroutines" }
+roomRuntime = { module = "androidx.room:room-runtime", version.ref = "room" }
+roomKtx = { module = "androidx.room:room-ktx", version.ref = "room" }
+roomCompiler = { module = "androidx.room:room-compiler", version.ref = "room" }
+datastorePreferences = { module = "androidx.datastore:datastore-preferences", version.ref = "datastore" }
+readiumNavigator = { module = "org.readium.kotlin-toolkit:readium-navigator", version.ref = "readium" }
+androidxPdfViewerFragment = { module = "androidx.pdf:pdf-viewer-fragment", version.ref = "androidxPdf" }
+composePdfium = { module = "dev.nucleusframework:pdfium", version.ref = "composePdf" }
+junit = { module = "junit:junit", version.ref = "junit" }
+testExtJunit = { module = "androidx.test.ext:junit", version.ref = "testExtJunit" }
+testRunner = { module = "androidx.test:runner", version.ref = "testRunner" }
+espressoCore = { module = "androidx.test.espresso:espresso-core", version.ref = "espresso" }
+desugarJdkLibs = { module = "com.android.tools:desugar_jdk_libs", version.ref = "desugarJdkLibs" }
+
+[plugins]
+android-application = { id = "com.android.application", version.ref = "agp" }
+kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
