@@ -1,0 +1,15 @@
+# Android / Gradle
+.gradle/
+local.properties
+.idea/
+*.iml
+**/build/
+/captures/
+.externalNativeBuild/
+.cxx/
+*.apk
+*.aab
+
+# Local execution workspaces
+.worktrees/
+.superpowers/
