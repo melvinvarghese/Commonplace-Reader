@@ -91,8 +91,7 @@ jobs:
           disk-size: 4096M
           disable-animations: true
           pre-emulator-launch-script: adb start-server
-          # API 37's mapper crashes with the deprecated indirect backend; retain API 28 as control.
-          emulator-options: -no-window -gpu ${{ matrix.api == '37.0' && 'swiftshader' || 'swiftshader_indirect' }} -no-snapshot -noaudio -no-boot-anim -show-kernel
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -show-kernel
           script: |
             python3 tools/run_emulator_smoke.py
       - name: Collect emulator failure diagnostics

@@ -6,11 +6,11 @@
 
 The native Kotlin/Compose shell has Library and Settings & data destinations, an honest empty library, and light/dark colors. It contains no sample books or nonfunctional export/sync controls.
 
-Both temporary PDF comparison flavors pass local JVM tests and Android lint, and produce debug app and instrumentation APKs. Each flavor currently has one passing JVM test. Both shells also pass launch/navigation instrumentation on a CI API 28 emulator (one test per flavor). API 37.0 runtime is blocked: live diagnostics now show repeated emulator graphics-service crashes and disappearing package/activity services. CI rejects missing, skipped or failed shell tests, including a previously observed false-green Gradle exit with zero tests. The latest [CI run](https://github.com/melvinvarghese/Commonplace-Reader/actions/runs/39465547495) passes checks/API 28 but fails API 37. Details are tracked in [development notes](docs/DEVELOPMENT.md). A successful build is not proof that a reader works.
+Both temporary PDF comparison flavors pass local JVM tests and Android lint, and produce debug app and instrumentation APKs. Each flavor currently has one passing JVM test. Both shells also pass launch/navigation instrumentation on a CI API 28 emulator (one test per flavor). API 37.0 runtime is blocked: live diagnostics now show repeated emulator graphics-service crashes and disappearing package/activity services. CI rejects missing, skipped or failed shell tests, including a previously observed false-green Gradle exit with zero tests. The latest [CI run](https://github.com/melvinvarghese/Commonplace-Reader/actions/runs/39466877428) passes checks/API 28 but fails API 37. Details are tracked in [development notes](docs/DEVELOPMENT.md). A successful build is not proof that a reader works.
 
 Not implemented yet: document import, EPUB/PDF reading, durable notes/highlights/bookmarks/progress, Commonplace and Search destinations, Markdown export, backup/restore, or Obsidian integration. This is not a beta or a release-ready APK.
 
-The next bounded CI experiment changes only API 37's deprecated GPU backend to its documented replacement, keeping API 28 as a control. SDK levels, dependencies and test assertions are unchanged. Live probes are not substitutes for passing instrumentation; Task 2 remains paused pending the result.
+The bounded GPU-backend experiment reproduced the same platform graphics failure and was reverted. SDK levels, dependencies and test assertions are unchanged; live probes are not substitutes for passing instrumentation. Task 2 remains paused. Further emulator/image compatibility work must not silently change the approved toolchain or requirements.
 
 ## Build
 
