@@ -6,7 +6,7 @@
 
 The native Kotlin/Compose shell has Library and Settings & data destinations, an honest empty library, and light/dark colors. It contains no sample books or nonfunctional export/sync controls.
 
-Both temporary PDF comparison flavors pass local JVM tests and Android lint, and produce debug app and instrumentation APKs. Each flavor currently has one passing JVM test. Instrumentation test compilation is verified; emulator execution is tracked separately in [development notes](docs/DEVELOPMENT.md). A successful build is not proof that a reader works.
+Both temporary PDF comparison flavors pass local JVM tests and Android lint, and produce debug app and instrumentation APKs. Each flavor currently has one passing JVM test. Both shells also pass launch/navigation instrumentation on a CI API 28 emulator (one test per flavor). API 37.0 timed out during emulator boot before app tests; the overall workflow is not green. Details are tracked in [development notes](docs/DEVELOPMENT.md). A successful build is not proof that a reader works.
 
 Not implemented yet: document import, EPUB/PDF reading, durable notes/highlights/bookmarks/progress, Commonplace and Search destinations, Markdown export, backup/restore, or Obsidian integration. This is not a beta or a release-ready APK.
 

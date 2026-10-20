@@ -86,7 +86,16 @@ jobs:
           arch: x86_64
           target: google_apis
           disable-animations: true
+          pre-emulator-launch-script: adb start-server
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -show-kernel
           script: ./gradlew --no-daemon --dependency-verification=strict :app:connectedAndroidxDebugAndroidTest :app:connectedComposepdfDebugAndroidTest
+      - name: Collect emulator failure diagnostics
+        if: failure()
+        run: |
+          mkdir -p build/reports/emulator
+          adb devices -l > build/reports/emulator/devices.txt 2>&1
+          timeout 20 adb logcat -d > build/reports/emulator/logcat.txt 2>&1 || true
+          find "$HOME/.android/avd" -name config.ini -exec cat {} \; > build/reports/emulator/avd-config.txt
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
