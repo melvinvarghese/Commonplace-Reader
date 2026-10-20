@@ -1,7 +1,10 @@
 package im.commonplace.reader.ui
 
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import android.content.Intent
+import androidx.compose.ui.test.junit4.createEmptyComposeRule
+import androidx.test.core.app.ActivityScenario
+import androidx.test.platform.app.InstrumentationRegistry
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -13,13 +16,17 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class ShellTest {
     @get:Rule
-    val composeRule = createAndroidComposeRule<MainActivity>()
+    val composeRule = createEmptyComposeRule()
 
     @Test
     fun launchAndNavigate() {
-        composeRule.onNodeWithText("Library").assertIsDisplayed()
-        composeRule.onNodeWithText("No books yet").assertIsDisplayed()
-        composeRule.onNodeWithText("Settings & data").performClick()
-        composeRule.onNodeWithText("Offline and private").assertIsDisplayed()
+        // The class-based AndroidX resolver falls back to the test APK on API 37.
+        val intent = Intent(InstrumentationRegistry.getInstrumentation().targetContext, MainActivity::class.java)
+        ActivityScenario.launch<MainActivity>(intent).use {
+            composeRule.onNodeWithText("Library").assertIsDisplayed()
+            composeRule.onNodeWithText("No books yet").assertIsDisplayed()
+            composeRule.onNodeWithText("Settings & data").performClick()
+            composeRule.onNodeWithText("Offline and private").assertIsDisplayed()
+        }
     }
 }
