@@ -1,5 +1,89 @@
 # Reader proof ledger
 
+## Final milestone decision — Task 7
+
+**PDF decision: NO SELECTION.** Tasks 1–6 are closed; Task 7 records the evidence review and documentation stop. Readium EPUB passes its bounded proof. Both PDF candidates are rejected for milestone acceptance because neither integration supplies the required exact selection, original-space geometry, durable highlights and recovery. Rendering and source-annotation safety passes do not waive those requirements. This is a foundation/proof checkpoint, not a beta or a green full-device matrix.
+
+### Decision table
+
+Every verdict is **PASS**, **FAIL** or **NOT RUN**. PASS applies only to the named bounded behavior. FAIL means an observed failed case or an explicitly unavailable required feature; it is not always a renderer defect. NOT RUN includes incomplete/inconclusive acceptance evidence. For EPUB, PDF-only operations are NOT RUN because they do not apply; EPUB relocation uses native locators, not PDF quads. EPUB columns cover both comparison flavors.
+
+| Required capability / evidence | Readium API 28 | Readium API 37 | AndroidX API 28 | AndroidX API 37 | ComposePdf API 28 | ComposePdf API 37 |
+| --- | --- | --- | --- | --- | --- | --- |
+| Ordinary local document rendering | PASS | PASS | FAIL | PASS | PASS | PASS |
+| Physical-page / 2× view-control scenario | NOT RUN | NOT RUN | FAIL | FAIL | PASS | PASS |
+| Independent native zoom-scale accuracy / viewport alignment | NOT RUN | NOT RUN | NOT RUN | NOT RUN | NOT RUN | NOT RUN |
+| Reflowable chapter navigation / full EPUB locator round-trip | PASS | PASS | NOT RUN | NOT RUN | NOT RUN | NOT RUN |
+| Exact multilingual native search / document text extraction | PASS | PASS | FAIL | PASS | PASS | PASS |
+| Repeated-passage identification / per-page search | PASS | PASS | FAIL | PASS | PASS | PASS |
+| App capture from exact native UI selection | PASS | PASS | FAIL | FAIL | FAIL | FAIL |
+| Original unrotated PDF crop/rotation mapping, 1-point transforms | NOT RUN | NOT RUN | FAIL | FAIL | FAIL | FAIL |
+| Restored passage highlight display (PDF: 2-dp overlays at 1×/2×) | PASS | PASS | FAIL | FAIL | FAIL | FAIL |
+| Durable quotation/reflection with native passage recovery | PASS | PASS | FAIL | FAIL | FAIL | FAIL |
+| Independent saved bookmarks and progress with native jump-back | PASS | PASS | FAIL | FAIL | FAIL | FAIL |
+| Real force-stop/relaunch of native capture, draft and highlight | PASS | PASS | NOT RUN | NOT RUN | NOT RUN | NOT RUN |
+| Source annotation retention after actual PDF force-stop/relaunch | NOT RUN | NOT RUN | NOT RUN | NOT RUN | PASS | PASS |
+| Changed-byte rejection retains writing; no stale coordinates applied | PASS | PASS | PASS | PASS | PASS | PASS |
+| Bounded shared import / interrupted-import recovery | PASS | PASS | PASS | PASS | PASS | PASS |
+| Explicit platform/format Unsupported or error outcome | PASS | PASS | PASS | PASS | PASS | PASS |
+| Per-document malformed/encrypted rejection beyond platform gate | PASS | PASS | NOT RUN | PASS | PASS | PASS |
+| No-text PDF render/message, no OCR or inferred scan diagnosis | NOT RUN | NOT RUN | FAIL | PASS | PASS | PASS |
+| Controlled EPUB hostile-resource/link/script isolation | PASS | PASS | NOT RUN | NOT RUN | NOT RUN | NOT RUN |
+| No INTERNET permission granted | PASS | PASS | PASS | PASS | PASS | PASS |
+| Local-only ordinary native reader path | PASS | PASS | NOT RUN | PASS | PASS | PASS |
+| Native reader recreation / fresh host after configuration change | PASS | PASS | NOT RUN | NOT RUN | PASS | PASS |
+| Source-switch / retired native-view resource verification | PASS | PASS | NOT RUN | NOT RUN | NOT RUN | NOT RUN |
+| Bounded EPUB teardown / closed-resource checks | PASS | PASS | NOT RUN | NOT RUN | NOT RUN | NOT RUN |
+| Complete open-cancellation/native-disposal acceptance | NOT RUN | NOT RUN | NOT RUN | NOT RUN | NOT RUN | NOT RUN |
+| Valid 100 MiB matched-profile / three-cycle performance protocol | NOT RUN | NOT RUN | NOT RUN | NOT RUN | NOT RUN | NOT RUN |
+| Cold usable-page ≤10s / 20-page navigation ≤1s / StrictMode proof | NOT RUN | NOT RUN | NOT RUN | NOT RUN | NOT RUN | NOT RUN |
+| 200% system text, dark/landscape, 48-dp reader controls | PASS | PASS | NOT RUN | NOT RUN | NOT RUN | NOT RUN |
+| Spoken TalkBack and full accessible capture/navigation audit | NOT RUN | NOT RUN | NOT RUN | NOT RUN | NOT RUN | NOT RUN |
+| Tablet and physical-device verification | NOT RUN | NOT RUN | NOT RUN | NOT RUN | NOT RUN | NOT RUN |
+| Complete required reader feature gate on that API | PASS | PASS | FAIL | FAIL | FAIL | FAIL |
+
+The last EPUB row means the **bounded automated Task 4 feature gate**, not beta/release acceptance. Shared imports are format-independent storage/provider checks, not a PDF-engine pass. AndroidX API 28 full-viewer features are deliberately unavailable in this integration below API 31 / S-extension 13; passing Unsupported assertions is a safety result, not feature support. AndroidX API 37 navigation failed before numeric zoom and recreation assertions were reached. Its exact multilingual selection pass is a document API result, not an application capture callback.
+
+ComposePdf page/zoom passes assert the displayed page/2× state and successful post-recreation reopening, not independently measured native scale or overlay alignment. Its ordinary page/zoom/search/recreation safety passes are separate from its failed crop/large painted-pixel predicates. Glyphs are visible in the failure screenshots; those predicates do **not** prove blank rendering. Numerical crop/rotation and durable-overlay requirements still fail because required integration geometry is unavailable. Complete native cleanup is unproven because upstream disposal is asynchronous without a completion acknowledgment. API 28 large-fixture transport was truncated; API 37 used approximately 4 GiB rather than the requested 2 GiB. Neither supplies performance acceptance. No universal hostile-PDF parser safety claim is made.
+
+The bounded EPUB retirement PASS covers the Task 4 controlled-close/three-layout-cycle and closed-resource checks, not a device-level open-cancellation proof or universal leak/performance certification. AndroidX API 28 checks the permission and explicit platform Unsupported outcome; its gated native reader and per-file parser paths are not credited as exercised. Both PDF location codecs require page-box, rotation and coordinate-space fields through shared validation; optional quads/native payload may be absent. Historical wording suggesting missing required geometry could be decoded as a valid location is superseded by this source-verified boundary; no such geometry is invented.
+
+### Dependency and native-runtime gate
+
+| Required evidence | Readium EPUB | AndroidX PDF | ComposePdfReader |
+| --- | --- | --- | --- |
+| Pinned dependencies, strict verification and app/test APK builds | PASS | PASS | PASS |
+| Identified upstream licenses / retained audited notices | PASS | PASS | PASS |
+| Complete transitive legal/distribution clearance | NOT RUN | NOT RUN | NOT RUN |
+| Native APK payload identity / RELRO / NOW / ZIP alignment audit | NOT RUN | NOT RUN | PASS |
+| All packaged native objects meet 16-KiB ELF alignment | NOT RUN | NOT RUN | FAIL |
+| Downstream fresh-cache app rebuild from pinned artifacts | NOT RUN | NOT RUN | PASS |
+| Avoid a required whole-file ByteArray plus JNI copy | NOT RUN | NOT RUN | FAIL |
+| Independent PDFium/JNI native-source reproducibility | NOT RUN | NOT RUN | NOT RUN |
+| ARM runtime and actual PAGE_SIZE=16384 execution | NOT RUN | NOT RUN | NOT RUN |
+| Accepted PDF candidate | NOT RUN | FAIL | FAIL |
+
+The ComposePdf audit covers **16 packaged libraries across four ABIs**, four externally retrieved engine payloads and **23 notice assets**. Two 32-bit PDFium objects have 4-KiB ELF alignment; 64-bit static alignment and APK ZIP alignment do not establish real 16-KiB operation. [Third-party notices](../THIRD_PARTY_NOTICES.md) retain exact hashes, license texts and provenance limits. Identified licenses are not blanket legal clearance.
+
+### Exact evidence used
+
+- **EPUB:** [run 39599700257](https://github.com/melvinvarghese/Commonplace-Reader/actions/runs/39599700257), source `d467a0880227eb0ee45d96128eb6d20609ce6233`: both APIs/flavors pass, including **28 native EPUB cases**, **four real reader recoveries**, **four interrupted-import recoveries**, **152 JVM**, **41 Python regressions** and **five fixture checks**. Manual TalkBack, tablet and physical-device checks were not run.
+- **AndroidX:** [run 39618958587](https://github.com/melvinvarghese/Commonplace-Reader/actions/runs/39618958587), source `604ae0069285e5f0062c1740bb0b0795a46c5b44`: checks/API 28 pass; API 37 navigation/zoom case fails. Original crop/rotation metadata is unavailable to this integration; no precise durable geometry pass exists.
+- **ComposePdf:** [run 39637129857](https://github.com/melvinvarghese/Commonplace-Reader/actions/runs/39637129857), source `193105c528549431bade033045b0e8237885d095`: checks pass; both emulator jobs fail. Focused results **6/9 API 28**, **7/9 API 37**, zero skips. Both separate PDF source-annotation restart probes pass. API 37 focused before/peak/close PSS is **109,752 / 325,871 / 108,667 KiB**, with **223,308,320 extra Java/native allocated bytes** for the 100 MiB source. These are finite samples, not the complete performance protocol.
+- **Later documentation-only run:** [39640011042](https://github.com/melvinvarghese/Commonplace-Reader/actions/runs/39640011042), source `26d0dee40a315d0d057f0e30ea40ea87124cc77a`, was still in progress when checked for this decision. It is not recorded as a pass and was not rerun. The final documentation commit uses `[skip ci]`; it does not change app/test/build/workflow source.
+
+Full per-case observations, fixture hashes, device identities, artifact paths and historical failures remain below. The fresh local documentation-checkpoint results and commands are in [TESTING](TESTING.md#task-7-documentation-checkpoint).
+
+### Stop and smallest revised recommendation
+
+Retain both comparison flavors and all candidate source, minSdk **28**, existing fixtures, thresholds and history. Do not add a third engine or present either rejected comparison as general PDF support. The approved milestone has reached its documented no-selection stop; the full successful runtime/release matrix remains unmet.
+
+The smallest revised recommendation is to keep Readium and the proven import/storage/capture foundation, and ask the owner to authorize a **separate, bounded PDF feasibility plan** addressing exact app-visible selection, original-space crop/rotation mapping and restored overlays before further product work. That is a recommendation, not permission to begin or a decision to drop PDF from the intended beta. It must include minimum/current Android and the remaining safety, performance, license, ARM/16-KiB and accessibility blockers before selecting an engine. No next milestone starts without the owner's decision.
+
+## Historical task evidence
+
+The sections below preserve the status as written at each checkpoint, including “Task 7 pending” and “Task 6 not started.” Only the final decision above describes the current milestone boundary.
+
 ## AndroidX PDF comparison — Task 5
 
 **Evaluated experimental candidate — REJECTED for milestone acceptance, not the selected PDF reader.** Engine identity is `androidx-pdf`; the pinned artifact is `androidx.pdf:pdf-viewer-fragment:1.0.0-beta01`. App minSdk remains **28**. The completed exact-source run below has a navigation/zoom scenario failure and does not establish durable geometry or highlights. Task 6 has not started; no required capability or threshold is waived.

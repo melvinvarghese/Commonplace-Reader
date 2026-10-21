@@ -1,45 +1,47 @@
 # Durable reader records
 
-Commonplace uses Room as the canonical store for reader writing and locations. This is a repository foundation, not a user-facing notebook or editor. Importing books and connecting reader engines belong to later tasks.
+Room is Commonplace's canonical store for writing and saved locations. The first milestone implements bounded imports and an EPUB reader/capture proof over these records. Both PDF comparisons remain experimental and rejected: **NO SELECTION**. Shared storage tests do not establish native PDF highlights. See the [final proof decision](READER_PROOF.md#final-milestone-decision--task-7), [tests](TESTING.md) and [approved architecture](ARCHITECTURE.md).
 
 ## Versions and storage
 
-The Room schema is **1**. Its exported definition is checked in at `app/schemas/im.commonplace.reader.data.CommonplaceDatabase/1.json`; both PDF comparison flavors use the same schema. The application container lazily creates the app-private `commonplace.db`. It does not enable main-thread queries or destructive migration fallback. There is no earlier schema to migrate; the first schema change must add and test a real migration from v1.
+Room schema **1** is exported at `app/schemas/im.commonplace.reader.data.CommonplaceDatabase/1.json`; both flavors use it. The application container lazily opens app-private `commonplace.db`, without main-thread queries or destructive migration fallback. No earlier schema exists to migrate; the first schema change needs a real v1 migration and tests.
 
-The location envelope version is independently **1**. Room stores it as text containing `version`, `format`, `engineId` and `payloadJson`. `payloadJson` is itself a string so native JSON, whitespace, Unicode and unknown fields survive exactly. Reader-engine and Android lifecycle objects are never database fields. Export/backup formats have not been implemented and do not share this schema version.
+The independently versioned location envelope is **1**, stored as text with `version`, `format`, `engineId` and `payloadJson`. The latter is itself a string, retaining native JSON whitespace, Unicode and unknown fields exactly. Reader-engine/lifecycle objects are never database fields. Export/backup formats are not implemented. DataStore holds one EPUB reading-color preference, not writing.
 
-## What each table owns
+## Tables
 
 | Table | Identity and contents | Relationships |
 | --- | --- | --- |
-| `sources` | UUID, title, optional authors, EPUB/PDF format, original URI, SHA-256 checksum, relative app-owned asset path, availability, UTC epoch-millisecond timestamps | Unique checksum index prevents duplicate document versions. Source creation/import is not yet exposed by the repository. |
-| `entries` | UUID, HIGHLIGHT/ANNOTATION kind, optional source/location/title/body/quotation, attribution title/authors, optional signed 32-bit ARGB color, creation/modification timestamps | Indexed nullable source FK uses `ON DELETE SET NULL`. Removing a source row preserves writing and its attribution snapshot. No removal UI is implemented. |
-| `bookmarks` | UUID, source, location, creation timestamp | Indexed source FK cascades on source deletion. Multiple bookmarks never overwrite progress or one another. |
-| `reading_state` | Source primary key, location, modification timestamp | One current position per source; source FK cascades on deletion. |
-| `reader_drafts` | Source primary key, capture (quotation plus location), optional reflection/color, modification timestamp | One active capture draft per source; source FK cascades on deletion. Drafts are not entries. |
+| `sources` | UUID, title/optional authors, format, original URI, SHA-256, relative app-owned asset path, availability, UTC timestamps | Unique checksum index prevents duplicate versions. The importer registers only complete copied assets. |
+| `entries` | UUID, HIGHLIGHT/ANNOTATION, optional source/location/title/body/quotation, attribution snapshot, optional signed 32-bit ARGB color, timestamps | Nullable indexed source FK uses `ON DELETE SET NULL`, preserving writing/attribution if a source row is removed. No removal UI exists. |
+| `bookmarks` | UUID, source, location, creation time | Source FK cascades; separate IDs, never reused as progress. |
+| `reading_state` | Source primary key, location, modification time | One progress record per source; source FK cascades. |
+| `reader_drafts` | Source primary key, capture (quotation/location), optional reflection/color, modification time | One capture draft per source; source FK cascades. Drafts are not entries. |
 
-`AVAILABLE` and `MISSING` express source availability without deleting writing. An original URI is provenance, not source identity or a promise of continued access. Document copying, availability reconciliation and source registration are not part of Task 2.
+`AVAILABLE` and `MISSING` express source availability without deleting writing. The original URI is provenance, not identity or continued-access assurance. App-private copying, staging cleanup and missing-asset reconciliation are implemented by Task 3; the historical Task 2 repository proof did not include them. Exact duplicates offer the existing source. Before native opening, canonical path/checksum verification rejects absent/replaced bytes and prevents stale coordinate application. There is no book removal/reattachment UI or multi-process import promise.
 
-## Saving and recovering writing
+## Saving and recovery
 
-`ReaderRepository` exposes source/entry flows and suspend operations for capture, source annotation, bookmarks, progress and drafts. Operations use an injected I/O dispatcher; Room runs observable queries on its own executor. The test constructor also accepts a clock and UUID supplier. Production defaults use UTC epoch milliseconds and random UUIDs.
+`ReaderRepository` supplies observable source/entry flows and suspend operations for captures, annotations, bookmarks, progress and drafts. It uses an injected I/O dispatcher; Room schedules observable queries. Production clocks use UTC epoch milliseconds and UUIDs; tests inject them.
 
-A highlight requires a nonblank quotation and a usable, matching-format location. A source annotation requires a nonblank body and has no invented passage location or quotation. Quotation, reflection and annotation text are preserved verbatim, including line breaks and Unicode. Both entry types obtain attribution from the durable source row inside their transaction; callers cannot supply a replacement attribution snapshot. A missing source, blank source title, invalid location or incompatible format rejects the write.
+A highlight needs a nonblank quotation and matching-format usable location. A source annotation needs a nonblank body with no invented passage or quotation. Quotation/reflection/body retain exact Unicode and line breaks. Attribution comes from the durable source within the transaction, never a caller-provided replacement. Missing sources, blank source titles, invalid locations and incompatible formats reject writes.
 
-Saving a capture inserts its entry and deletes that source's draft in **one Room transaction**. A failed insert or failed draft deletion rolls back the whole operation. The UUID is returned only after the transaction succeeds. An exception, including cancellation, propagates rather than becoming a success acknowledgment or empty result. As with any durable write, cancellation near completion can leave a committed write without an acknowledgment; callers must not infer that every unacknowledged operation did nothing.
+Saving a capture inserts the entry and clears its draft in **one Room transaction**. Failure rolls both back. Success is acknowledged only after the operation completes; exceptions/cancellation propagate. Cancellation near completion may leave a committed write without acknowledgment, so unacknowledged does not mean nothing happened.
 
-A draft save validates its quotation and source/location, then upserts only the draft. Its supplied modification timestamp is retained. Progress upserts only the current position; bookmarks are separate inserts with separate IDs. Reads do not promote drafts into entries or silently reset a location. Draft saving at lifecycle boundaries and progress debounce/flush are responsibilities of the later reader/ViewModel implementation, not claims made by this repository.
+Draft saves upsert only the draft; progress upserts only reading state; bookmarks are independent inserts. ReaderViewModel now owns the tested 300-ms draft debounce, 500-ms progress coalescing and boundary flushes. The EPUB proof verifies acknowledged pending drafts, full native locators, committed quotation/reflection, bookmarks, progress and restored decorations across actual process death and explicit source reopening. Unacknowledged last keystrokes and automatic last-book launch are not promised.
 
-## EPUB and PDF locations
+## Engine-specific locations
 
-An EPUB location keeps the complete Readium-native locator JSON as an opaque object. Task 2 checks the version, engine identity and JSON object shape, not publication-specific relocation: that requires the Readium integration.
+**EPUB:** `readium` identity and the complete Readium locator JSON are preserved. Flavor-specific PDF identities are `androidx-pdf` and `nucleus-composepdf`; adapters/ViewModel reject foreign candidates and incompatible formats/versions. Task 4 proves real EPUB selection/relocation/recovery, beyond the historical Task 2 codec-only round-trips.
 
-A PDF location retains its zero-based physical `pageIndex`, optional genuine Unicode `pageLabel`, four-bound PDF-point `pageBox`, `rotationDegrees`, coordinate-space marker `unrotated-pdf-points` and optional selection `quads` (eight coordinates per quad). Physical display numbers are one-based; printed labels are not inferred from them. Null or absent quads remain missing, rather than fabricated precision. Geometry must be finite and structurally valid; this is not evidence that either PDF engine maps it correctly.
+**PDF:** the shared valid-write contract requires zero-based physical `pageIndex`, four-bound PDF-point `pageBox`, `rotationDegrees` and `coordinateSpace = "unrotated-pdf-points"`, with optional genuine Unicode `pageLabel` and optional eight-coordinate selection quads. Physical display numbers are one-based; printed labels and missing quads are not fabricated. Bounds/numbers must be finite and structurally valid.
 
-Decoding a stored envelope deliberately does **not** validate its payload or reject an unknown location version. This keeps future or malformed native data recoverable. `validate()` rejects unsupported/invalid values before writes, display helpers or engine use, without changing or deleting their stored payload. A future reader must surface an unresolved/unsupported location rather than silently navigating to a guessed position.
+Both flavor-local codecs call `SavedLocation.validate()` on encoding and decoding: page-box, rotation and coordinate-space fields are mandatory; quads, printed labels and opaque native JSON may be absent. The codecs do not establish that supplied geometry is engine-observed or accurate. Neither PDF host emits precise captures/progress/bookmarks or applies restored highlights because original crop/rotation mapping is unverified. Temporary PDF page/zoom controls are not durable locations. Tests seeding synthetic PDF records prove retention/refusal, not native capture. ComposePdf's actual restart probe proves only source-annotation durability, with no passage location.
 
-## Verification boundaries
+Envelope decoding preserves unknown/future/malformed native payloads for recovery; validation rejects unsupported values before new writes or use without deleting stored writing. Unknown locations must remain unresolved rather than guessed.
 
-`SavedLocationTest` exercises native-payload round trips and PDF/version validation. `ReaderRepositoryTest` uses a named, file-backed Room database, closes/reopens it, and verifies exact Unicode values, IDs and attribution; independent progress/bookmarks; draft recovery; successful commit and triggered rollback; cancellation; unique checksums; and foreign-key retention/cascades. The same repository class runs in host Robolectric SDK 28 tests and Android instrumentation. Host results are not device evidence.
+## Verified and future boundaries
 
-CI's executed-test guard requires the shell case and every named repository contract case in both flavors, rejecting missing, failed, errored or skipped instrumentation. Actual run outcomes are recorded in development notes, not inferred from the existence of a workflow. These tests establish durable records, not reader relocation, process-death UI restoration, import safety, exports, backups or a complete editor.
+`SavedLocationTest` covers opaque round-trips and validation. `ReaderRepositoryTest` uses a named file-backed Room database on host Robolectric API 28 and Android instrumentation: exact text/IDs/attribution, close/reopen, independent records, draft recovery, atomic commit/triggered rollback, cancellation, unique checksums and FK behavior. Task 4 adds actual native EPUB recovery; Task 6 adds actual PDF source-annotation recovery only. Host tests are not device evidence; guarded no-op probes are not kill/relaunch tests.
+
+Only HIGHLIGHT and ANNOTATION are implemented entry kinds. Thoughts/source notes, tags/collections/relationships, collection search/indexing, complete editors, Markdown/export mappings, backup/restore and schema migration beyond v1 need later plans. See [DEVELOPMENT](DEVELOPMENT.md), [TESTING](TESTING.md) and the [seven-task milestone](superpowers/plans/2026-10-20-foundation-reader-proof.md) for exact evidence and limits.

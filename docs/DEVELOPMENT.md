@@ -1,5 +1,17 @@
 # Developing Commonplace
 
+## Current milestone boundary
+
+**NO SELECTION for PDF.** The approved seven-task milestone has reached its evidence/documentation stop. Readium EPUB passed the bounded automated proof; AndroidX and ComposePdfReader were evaluated and rejected. Both flavors and exact pins remain for reproducibility, with minSdk 28 unchanged. No app/test/build/workflow source changes in Task 7.
+
+Current features are bounded local imports, Room records, EPUB reading/captures/reflections/source annotations/bookmarks/progress and a small proof panel. PDF page/search controls are experimental and do not supply durable capture/highlights/navigation. Full editors, Commonplace/Search, collection indexing, tags/collections, export, backup/restore and Obsidian remain planned. This is not a beta.
+
+The fresh Task 7 host gate passes **87 AndroidX + 86 Composepdf JVM cases**, **61 Python regressions**, **five fixture tests**, strict lint (zero errors; 16 retained warnings per flavor) and both-flavor app/test-APK task validation. JVM tasks explicitly reran; other build tasks may be up-to-date. Native tests were not rerun for this docs-only checkpoint. The exact-source runtime failures and unrun ARM/16-KiB/accessibility/performance gates remain; no fresh full device-matrix pass is claimed. See [TESTING](TESTING.md#task-7-documentation-checkpoint) for commands and the [final decision table](READER_PROOF.md#final-milestone-decision--task-7) for every gate.
+
+[Architecture](ARCHITECTURE.md) · [Approved plan](superpowers/plans/2026-10-20-foundation-reader-proof.md) · [Data model](DATA_MODEL.md) · [Notices](../THIRD_PARTY_NOTICES.md) · [README](../README.md)
+
+Later task sections below retain historical counts/status. In particular, Task 1/2 “not run” or “not started” statements are checkpoint history; they do not supersede the bounded EPUB proof or final PDF rejections.
+
 ## Build the foundation
 
 Use a full **JDK 17** (not just a runtime), the Android command-line tools and the following SDK packages:
@@ -33,7 +45,7 @@ Do not commit `local.properties`, SDK paths, private documents or build outputs.
 | Readium navigator | `org.readium.kotlin-toolkit:readium-navigator:3.4.0` |
 | AndroidX PDF | `androidx.pdf:pdf-viewer-fragment:1.0.0-beta01` |
 | ComposePdfReader PDFium | `dev.nucleusframework:pdfium:158.0.8111.0` |
-| Room / DataStore | 2.8.5 integrated / 1.2.1 reserved, not integrated |
+| Room / DataStore | 2.8.5 integrated / 1.2.1 integrated for one EPUB reading-color preference |
 | JSON envelope / host Android tests | kotlinx.serialization-json 1.11.0 / Robolectric 4.17 |
 | JUnit / AndroidX test JUnit / runner / Espresso | 4.13.2 / 1.3.0 / 1.7.0 / 3.7.0 |
 
@@ -137,7 +149,7 @@ Retained API 37 snapshots show system-server PID `637` before tests, after tests
 
 The [AndroidX viewer guide](https://developer.android.com/media/grow/implement-pdf-viewer) requires API 31 plus SDK extension 13 for the full viewer. API 28 stays the app baseline and must produce an explicit unavailable capability during that candidate proof, rather than an attempted unsupported viewer launch. [AndroidX release notes](https://developer.android.com/jetpack/androidx/releases/pdf) describing backported lower-level rendering do not establish full viewer compatibility.
 
-Readium is scoped to EPUB. The Nucleus PDFium artifact includes native code and the project documents four Android ABIs; packaged ABIs, native notices/provenance and 16 KB checks are tracked in [third-party notices](../THIRD_PARTY_NOTICES.md). ELF segment alignment alone does not prove loading or rendering on a 16 KB device. Neither PDF candidate has passed selection, search, highlight geometry, memory or lifecycle gates.
+Readium is scoped to EPUB. The Nucleus PDFium artifact includes native code and the project documents four Android ABIs; packaged ABIs, native notices/provenance and 16 KB checks are tracked in [third-party notices](../THIRD_PARTY_NOTICES.md). ELF segment alignment alone does not prove loading or rendering on a 16 KB device. Neither PDF candidate has passed the complete selection/highlight, memory and lifecycle acceptance gate. Bounded native text search/extraction passes exist on API 37 for AndroidX and on both APIs for ComposePdf; those are not application selection/highlight passes.
 
 ## Task 2: durable repository verification
 

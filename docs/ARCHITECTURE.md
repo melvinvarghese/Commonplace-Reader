@@ -1,14 +1,16 @@
-# Commonplace: architecture for review
+# Commonplace: approved architecture and milestone status
 
 **A home for the ideas you keep.**
 
-**Status: proposed design, awaiting the owner's review.** The owner has approved the direction: one native Compose app, Readium for EPUB, a small AndroidX PDF versus ComposePdfReader comparison before choosing the PDF engine, and Apache-2.0 as the intended project license. This document makes that direction concrete; it does not authorize implementation.
+**Current status: approved direction and seven-task foundation/proof milestone; evidence review reached NO SELECTION for PDF.** The owner approved the full plan and normal incremental pushes to `main`. Readium EPUB has a bounded passing proof; both PDF candidates were evaluated and rejected for milestone acceptance. The app remains a development proof, not a beta. No Android baseline increase or third engine is authorized.
+
+The design below retains the intended beta requirements. Statements in the historical review section describe the original checkpoint, not today’s implementation. The [approved plan](superpowers/plans/2026-10-20-foundation-reader-proof.md), [final reader decision](READER_PROOF.md#final-milestone-decision--task-7), [data model](DATA_MODEL.md), [development](DEVELOPMENT.md) and [testing](TESTING.md) separate implemented features from unrun/rejected/planned work. The original proposed-design wording was: “Status: proposed design, awaiting the owner's review”; it did not authorize implementation at that earlier checkpoint.
 
 Commonplace will be a dependable offline Android reader and personal commonplace book. A reader can import a book, keep a passage, add a reflection, find it later, and export their writing without needing Obsidian or an account. Reliability and ownership of notes matter more than the number of features.
 
 ## What the first beta includes
 
-The first beta is intended to combine PDF and reflowable EPUB reading with four saved entry types: thoughts, highlights, annotations, and source notes. Reading progress, bookmarks, tags, collections, search, Markdown export, and validated backup/restore are beta requirements; none is implemented or tested yet. A highlight stores the selected quotation and any reflection separately, and remains readable when its book is missing.
+The first beta is intended to combine PDF and reflowable EPUB reading with four saved entry types: thoughts, highlights, annotations, and source notes. Reading progress, bookmarks, tags, collections, search, Markdown export, and validated backup/restore are beta requirements; at the original design checkpoint none was implemented or tested. The current milestone implements only bounded imports, EPUB capture/annotations, progress and bookmarks, not the full beta. A highlight stores the selected quotation and any reflection separately, and remains readable when its book is missing.
 
 PDF text search, selection, and precise highlights are requirements for supported text documents, not claims about every PDF. Scanned documents may only render; no OCR is included. Password-protected PDFs, fixed-layout EPUBs, and malformed publications need explicit supported/unsupported results rather than blanket compatibility claims. DRM support and circumvention are outside this beta.
 
@@ -43,7 +45,7 @@ Proposed baseline is Android 9/API 28 or newer, subject to the comparison. Do no
 
 The small proof must use the same legally distributable fixtures for both PDF candidates: ordinary text, rotated/cropped pages, multilingual passages, scans, malformed input, and a large document. Required evidence is correct rendering/navigation/zoom; text search and exact selection capture; durable highlight geometry; notes and bookmarks; progress restoration; return-to-passage after process death; bounded memory and responsive UI; lifecycle cleanup; and dependency/license compatibility. Record device/API, artifact version, supported features, failures, and observed resource use.
 
-Choose one PDF engine only if these checks establish a credible supported experience. A rendering-only demo does not pass the highlighting requirement. If neither passes, return with the evidence and a revised recommendation before widening scope or silently dropping features. The proof has not been run at this design milestone.
+Choose one PDF engine only if these checks establish a credible supported experience. A rendering-only demo does not pass the highlighting requirement. If neither passes, return with the evidence and a revised recommendation before widening scope or silently dropping features. At the original design milestone the proof had not run. It has now run: both PDF candidates fail the acceptance gate; see the final decision linked above.
 
 Each reader integration exposes only opening/closing, navigation to a saved location, progress updates, capability state, selection capture, and saved-highlight display. Capabilities are per document and device. Missing text is reported as “No selectable text available”; that alone does not prove a PDF is scanned. Do not build a universal renderer abstraction or force PDF and EPUB locations into one page-number model.
 
@@ -96,10 +98,16 @@ Beta readiness requires an installable build that launches on a supported device
 
 GitHub Actions will build and run available automated tests once an Android project exists. Detailed data/schema, Markdown, technical-decision, testing, and development-status documents will be maintained alongside implementation, not created here as empty promises.
 
-## Current state and review decision
+## Historical design checkpoint and review decision
 
 The repository baseline is commit `9f9a88bd05fab3a3c1054d07ea897f76fecb2d46` on `main`: a one-line README and GPL-3.0 LICENSE, with no application or build system. Existing history is preserved. The owner selected Apache-2.0; this documentation-only milestone leaves LICENSE unchanged and does not represent the repository as already relicensed. The authorized license replacement and complete third-party notice review must occur before a release; prior history is not rewritten.
 
 The current sandbox has Java 21 runtime but no detected Java compiler, Android SDK, Gradle, Kotlin CLI, or emulator, and roughly 31 GB free. No Android build, reader proof, device test, or APK exists. Toolchain setup and actual compatibility measurements are prerequisites for later engineering work, not evidence already obtained.
 
 **Owner review requested:** approve this written design or request changes to the reading-and-commonplace experience, beta boundary, app-owned import trade-off, or data-safety rules. PDF engine selection and Android compatibility remain subject to proof evidence. Written-spec approval permits drafting an implementation plan only, not implementation. Implementation begins only after that plan is reviewed and its execution method is selected.
+
+## First milestone outcome and owner decision
+
+Tasks 1–6 are closed; Task 7 records a documentation/evidence checkpoint and the required no-selection stop. The Apache-2.0 replacement, buildable shell, safe bounded imports, Room records and Readium proof are implemented. Full successful PDF and release-readiness matrices are not. AndroidX lacks validated original crop/rotation mapping and failed the current-API navigation/zoom case. ComposePdf lacks exact application capture and restored-overlay APIs; its large-file copy, incomplete performance protocol and untested ARM/16-KiB runtime remain blockers.
+
+Keep both comparison flavors/source, minSdk 28 and all original requirements/history. The smallest revised recommendation is a separately approved PDF feasibility plan for precise selection/geometry/restored highlights, with the remaining platform, safety, performance, licensing and accessibility gates retained. This is not authorization to begin it or to omit PDF from the intended beta. Wait for the owner before a next milestone.

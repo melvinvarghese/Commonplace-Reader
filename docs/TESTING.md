@@ -1,8 +1,45 @@
 # Testing Commonplace
 
+## Task 7 documentation checkpoint
+
+**Decision: NO SELECTION.** Both PDF candidates are rejected for milestone acceptance; the [final capability table](READER_PROOF.md#final-milestone-decision--task-7) separates required features, safety assertions and NOT RUN evidence. Readium's accepted bounded Task 4 proof is not a PDF or release-readiness pass. No source, test, dependency or workflow was changed in this checkpoint.
+
+Fresh existing checks were executed locally with JDK 17 and the pinned SDK:
+
+```sh
+./gradlew --no-daemon --dependency-verification=strict \
+  :app:testAndroidxDebugUnitTest --rerun :app:testComposepdfDebugUnitTest --rerun \
+  :app:lintAndroidxDebug :app:lintComposepdfDebug \
+  :app:assembleAndroidxDebug :app:assembleComposepdfDebug \
+  :app:assembleAndroidxDebugAndroidTest :app:assembleComposepdfDebugAndroidTest
+python3 -m unittest discover -s tools -p 'test_*.py' -v
+python3 -m unittest tools/fixtures/test_generate_fixtures.py -v
+```
+
+Result: **173 JVM cases (87 + 86), zero failures/errors/skips; 61 Python regressions; five fixture tests; build task set successful**. Both JVM tasks explicitly reran. Gradle reports four tasks executed and 181 up-to-date: lint/assembly validated current outputs, not a clean-cache rebuild. Lint XML retains zero errors and 16 warnings per flavor. Separate Task 6 clean-cache app-build evidence is recorded in the ledger; native-source reproducibility is not claimed. Local command logs are under `/workspace/task7-evidence/`, outside Git.
+
+| Native/checkpoint verification | Result / reason |
+| --- | --- |
+| API 28/API 37 full instrumentation | NOT RUN anew; docs-only checkpoint preserves exact tested app/test source. Existing Task 5/6 runs retain PDF failures. |
+| Readium real reader/import restart | NOT RUN anew; Task 4's four reader and four import recoveries remain the exact-source bounded proof. |
+| PDF native highlight/bookmark/progress restart | NOT RUN; required integration features are unavailable. Source-annotation-only recovery passes in Task 6 are separate. |
+| Offline/error paths | NOT RUN anew; bounded Task 4 resource-isolation and Task 5/6 local/error evidence retained, not generalized. |
+| ARM and actual 16-KiB runtime | NOT RUN; no qualifying execution evidence/hardware in this proof. Static alignment is not runtime. |
+| TalkBack speech/tablets/physical devices | NOT RUN; automated EPUB semantics/text/landscape checks do not substitute. |
+| Complete matched-2-GiB large-PDF protocol | NOT RUN to completion; API 28 transport truncated, API 37 effective RAM differs, fixture has one page, later cycles/timing/StrictMode missing. |
+| Existing docs-only CI run 39640011042 | In progress when checked; not credited as PASS, not rerun. |
+
+The original Task 7 step 3 requested a fresh full runtime matrix. This checkpoint does **not** claim that requirement passed: the later owner instruction limits this work to evidence-only documentation with no new exploratory tests or duplicate CI. Existing exact-source runs are retained, missing evidence remains blocking, and the task closes at the expressly allowed NO SELECTION stop rather than successful engine acceptance. Independent read-only review checked actual native XML, candidate APIs/code and all six changed documents. It confirmed NO SELECTION and the passing ComposePdf page/zoom/recreation case on both APIs. Its compound-row findings were addressed by separating recreation from source switching, bounded EPUB teardown from complete open-cancellation, and AndroidX permission/platform refusal from unrun API 28 reader/parser paths. No source-code change was needed; review cannot turn failed or missing runtime tests green.
+
+[Development](DEVELOPMENT.md) · [Data model](DATA_MODEL.md) · [Architecture](ARCHITECTURE.md) · [Plan](superpowers/plans/2026-10-20-foundation-reader-proof.md)
+
+## Historical task checkpoints and reproducible commands
+
+Earlier task statuses and counts below are retained as history; the final decision above supersedes pending wording without changing historical results.
+
 ## Safe import proof
 
-Both PDF-candidate flavors use the same importer and original synthetic documents. Imports use Android's `ACTION_OPEN_DOCUMENT` picker, copy to a random app-private staging file, hash while copying, validate the copy, then place the complete asset before registering its Room source. The original provider file is never opened for writing. Exact duplicates retain one source and offer **Open existing book**: EPUB opens in the native reader; PDF enters the experimental comparison only in the `androidx` flavor. The other flavor retains explicit source details until Task 6.
+Both PDF-candidate flavors use the same importer and original synthetic documents. Imports use Android's `ACTION_OPEN_DOCUMENT` picker, copy to a random app-private staging file, hash while copying, validate the copy, then place the complete asset before registering its Room source. The original provider file is never opened for writing. Exact duplicates retain one source and offer **Open existing book**: EPUB opens in the native reader; PDF enters the experimental comparison in either flavor after Task 6. Neither is accepted PDF support.
 
 The proof limits are 256 MiB per import, 10,000 ZIP members, 64 MiB per expanded member and 512 MiB total declared/actual ZIP expansion. Remaining free space is rechecked before every copied block, with a 1 MiB reserve; real write/sync failures still abort. ZIP paths, duplicate names, lengths and CRCs are checked without extraction. EPUB structural XML has an additional 2 MiB/document, 128-depth and 100,000-token cap. DTDs/entities are refused. Only local XHTML reading-order resources are accepted by this proof. These intentionally conservative checks are not a complete EPUB conformance certification.
 
@@ -36,7 +73,7 @@ python3 tools/verify_android_test_results.py \
 
 CI additionally runs `python3 tools/run_import_recovery.py` on each disposable emulator after the normal suite. A guarded instrumentation probe writes a nonempty staging file and blocks; the runner requires its private readiness marker and live PID before force-stopping the real target process, confirms the PID disappears, then runs a fresh-process verification. The new partial source must be absent, staging/orphans removed, and a preexisting source annotation retained. Both flavors must report exactly one passing recovery verification; logs are under `build/reports/import-recovery`. The guarded stage methods return without staging during the normal suite; those two normal-suite results are not the recovery evidence. The probe refuses preexisting unrelated staging/orphan files and is not a tool to run on personal data.
 
-The result guard rejects missing named shell, repository, importer, real-provider and EPUB cases, plus all seven named PDF safety/proof cases in the AndroidX flavor, and any reported failure/error/skip. It does not require second-candidate PDF cases before Task 6. CI retains actual XML and failure diagnostics. An executed assertion of Unsupported or an asserted geometric limitation is **not** a native feature pass. API 28/API 37.0 remain the approved proof matrix, not a public supported-device promise. Physical devices, SAF picker automation, accessibility/TalkBack and actual cloud/document-provider grant UI flows are not established by host tests.
+The result guard rejects missing named shell, repository, importer, real-provider and EPUB cases, plus all seven named PDF safety/proof cases in the AndroidX flavor, and any reported failure/error/skip. At the Task 5 checkpoint it did not require second-candidate PDF cases; Task 6 now requires the named Composepdf cases too. CI retains actual XML and failure diagnostics. An executed assertion of Unsupported or an asserted geometric limitation is **not** a native feature pass. API 28/API 37.0 remain the approved proof matrix, not a public supported-device promise. Physical devices, SAF picker automation, accessibility/TalkBack and actual cloud/document-provider grant UI flows are not established by host tests.
 
 ## Task 5 AndroidX PDF comparison
 
