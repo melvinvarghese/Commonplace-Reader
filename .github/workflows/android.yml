@@ -81,8 +81,24 @@ jobs:
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
+      - name: Check out the unchanged pinned emulator runner
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: reactivecircus/android-emulator-runner
+          ref: a421e43855164a8197daf9d8d40fe71c6996bb0d
+          path: .diagnostic-emulator-runner
+          persist-credentials: false
+      - name: Select already-installed API 37 AVD tools and add pre-boot target gate
+        if: matrix.api == '37.0'
+        run: |
+          tool_bin="$(dirname "$(readlink -f "$(command -v avdmanager)")")"
+          test "$tool_bin" != "$ANDROID_HOME/cmdline-tools/latest/bin"
+          test -x "$tool_bin/avdmanager"
+          cat "$tool_bin/../source.properties"
+          echo "COMMONPLACE_CMDLINE_TOOLS_BIN=$tool_bin" >> "$GITHUB_ENV"
+          python3 tools/prepare_emulator_runner.py
       - name: Launch and navigate both shells
-        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2
+        uses: ./.diagnostic-emulator-runner
         with:
           api-level: ${{ matrix.api }}
           arch: x86_64
