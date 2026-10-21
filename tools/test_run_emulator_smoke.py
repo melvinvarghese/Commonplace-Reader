@@ -7,9 +7,7 @@ import unittest
 from pathlib import Path
 
 TOOLS = Path(__file__).parent
-PASSING = ('<testsuite tests="1" failures="0" errors="0" skipped="0">'
-           '<testcase name="launchAndNavigate" '
-           'classname="im.commonplace.reader.ui.ShellTest"/></testsuite>')
+from test_verify_android_test_results import PASSING
 
 
 class EmulatorSmokeTest(unittest.TestCase):

@@ -5,9 +5,14 @@ import unittest
 from pathlib import Path
 
 SCRIPT = Path(__file__).with_name("verify_android_test_results.py")
-PASSING = ('<testsuites tests="1" failures="0" errors="0" skipped="0">'
+SHELL_ONLY = ('<testsuites tests="1" failures="0" errors="0" skipped="0">'
            '<testsuite><testcase name="launchAndNavigate" '
            'classname="im.commonplace.reader.ui.ShellTest"/></testsuite></testsuites>')
+
+REPOSITORY_CASES = ('unicodeCaptureAndAnnotationRecoverExactValuesAndSourceAttribution', 'blankCaptureIsRejectedWithoutAnEntry', 'progressAndTwoBookmarksRemainIndependentAfterReopen', 'draftSurvivesReopenAndNeverAppearsAsEntry', 'successfulCaptureClearsDraftInSameCommit', 'failedCaptureRetainsDraftAndLeavesNoEntry', 'failureAfterInsertRollsBackEntryAndDraftDeletion', 'missingSourceAndFormatMismatchCannotCreatePartialRecords', 'unknownLocationVersionRemainsRecoverableButCannotOverwriteProgress', 'cancellationPropagatesWithoutAcknowledgingOrSaving', 'sourceDeletionRetainsWritingAndAttributionButRemovesDependentState', 'duplicateChecksumAndDanglingForeignKeysAreRejected', 'invalidDraftOrBlankAnnotationDoesNotOverwriteExistingWriting')
+PASSING = SHELL_ONLY.replace("</testsuite>", "".join(
+    f'<testcase name="{name}" classname="im.commonplace.reader.data.ReaderRepositoryTest"/>'
+    for name in REPOSITORY_CASES) + "</testsuite>")
 
 
 class InstrumentationResultGuardTest(unittest.TestCase):
@@ -43,6 +48,13 @@ class InstrumentationResultGuardTest(unittest.TestCase):
     def test_rejects_other_test_in_place_of_shell_test(self):
         other = PASSING.replace("launchAndNavigate", "someOtherTest")
         self.assertNotEqual(self.run_guard(dict.fromkeys(("androidx", "composepdf"), other)).returncode, 0)
+
+    def test_rejects_shell_only_reports_without_durable_repository_tests(self):
+        self.assertNotEqual(self.run_guard(dict.fromkeys(("androidx", "composepdf"), SHELL_ONLY)).returncode, 0)
+
+    def test_rejects_one_missing_repository_case(self):
+        report = PASSING.replace(REPOSITORY_CASES[0], "notTheDurabilityContract")
+        self.assertNotEqual(self.run_guard(dict.fromkeys(("androidx", "composepdf"), report)).returncode, 0)
 
     def test_rejects_malformed_xml(self):
         self.assertNotEqual(self.run_guard({"androidx": "broken", "composepdf": PASSING}).returncode, 0)

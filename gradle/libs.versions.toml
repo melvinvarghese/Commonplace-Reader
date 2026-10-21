@@ -8,6 +8,8 @@ lifecycle = "2.11.0"
 core = "1.19.0"
 coroutines = "1.11.0"
 room = "2.8.5"
+serializationJson = "1.11.0"
+robolectric = "4.17"
 datastore = "1.2.1"
 readium = "3.4.0"
 androidxPdf = "1.0.0-beta01"
@@ -32,6 +34,8 @@ composeUiTestManifest = { module = "androidx.compose.ui:ui-test-manifest" }
 composeMaterial3 = { module = "androidx.compose.material3:material3" }
 coreKtx = { module = "androidx.core:core-ktx", version.ref = "core" }
 coroutinesAndroid = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "coroutines" }
+serializationJson = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "serializationJson" }
+robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
 roomRuntime = { module = "androidx.room:room-runtime", version.ref = "room" }
 roomKtx = { module = "androidx.room:room-ktx", version.ref = "room" }
 roomCompiler = { module = "androidx.room:room-compiler", version.ref = "room" }

@@ -42,6 +42,9 @@ android {
         isCoreLibraryDesugaringEnabled = true
     }
 
+    testOptions { unitTests.isIncludeAndroidResources = true }
+    sourceSets.getByName("test").java.srcDir("src/androidTest/java/im/commonplace/reader/data")
+
     buildFeatures {
         compose = true
     }
@@ -66,12 +69,18 @@ dependencies {
     implementation(libs.composeMaterial3)
     implementation(libs.coreKtx)
     implementation(libs.coroutinesAndroid)
+    implementation(libs.serializationJson)
+    implementation(libs.roomRuntime)
+    implementation(libs.roomKtx)
+    ksp(libs.roomCompiler)
     implementation(libs.readiumNavigator)
 
     "androidxImplementation"(libs.androidxPdfViewerFragment)
     "composepdfImplementation"(libs.composePdfium)
 
     testImplementation(libs.junit)
+    testImplementation(libs.testExtJunit)
+    testImplementation(libs.robolectric)
 
     androidTestImplementation(libs.testExtJunit)
     androidTestImplementation(libs.testRunner)
@@ -82,3 +91,11 @@ dependencies {
     debugImplementation(libs.composeUiTooling)
     debugImplementation(libs.composeUiTestManifest)
 }
+
+class RoomSchemaArgProvider(
+    @get:InputDirectory @get:PathSensitive(PathSensitivity.RELATIVE) val schemaDir: File,
+) : CommandLineArgumentProvider {
+    override fun asArguments() = listOf("room.schemaLocation=${schemaDir.path}")
+}
+
+ksp { arg(RoomSchemaArgProvider(file("schemas"))) }

@@ -1,9 +1,25 @@
 #!/usr/bin/env python3
-"""Reject successful Gradle exits that contain no executed shell smoke tests."""
+"""Reject successful Gradle exits that omit executed shell or durable repository tests."""
 import sys
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
+
+REPOSITORY_CASES = {
+    "unicodeCaptureAndAnnotationRecoverExactValuesAndSourceAttribution",
+    "blankCaptureIsRejectedWithoutAnEntry",
+    "progressAndTwoBookmarksRemainIndependentAfterReopen",
+    "draftSurvivesReopenAndNeverAppearsAsEntry",
+    "successfulCaptureClearsDraftInSameCommit",
+    "failedCaptureRetainsDraftAndLeavesNoEntry",
+    "failureAfterInsertRollsBackEntryAndDraftDeletion",
+    "missingSourceAndFormatMismatchCannotCreatePartialRecords",
+    "unknownLocationVersionRemainsRecoverableButCannotOverwriteProgress",
+    "cancellationPropagatesWithoutAcknowledgingOrSaving",
+    "sourceDeletionRetainsWritingAndAttributionButRemovesDependentState",
+    "duplicateChecksumAndDanglingForeignKeysAreRejected",
+    "invalidDraftOrBlankAnnotationDoesNotOverwriteExistingWriting",
+}
 
 def verify(root):
     for flavor in ("androidx", "composepdf"):
@@ -11,6 +27,7 @@ def verify(root):
         if not reports:
             raise ValueError(f"{flavor}: no instrumentation XML reports")
         shell_passed = False
+        repository_passed = set()
         for report in reports:
             tree = ET.parse(report).getroot()
             for element in tree.iter():
@@ -22,9 +39,15 @@ def verify(root):
                         and element.get("classname") == "im.commonplace.reader.ui.ShellTest"
                         and element.get("name") == "launchAndNavigate"):
                     shell_passed = True
+                if (element.tag == "testcase"
+                        and element.get("classname") == "im.commonplace.reader.data.ReaderRepositoryTest"):
+                    repository_passed.add(element.get("name"))
         if not shell_passed:
             raise ValueError(f"{flavor}: launchAndNavigate did not execute")
-        print(f"{flavor}: launchAndNavigate executed and passed")
+        missing = REPOSITORY_CASES - repository_passed
+        if missing:
+            raise ValueError(f"{flavor}: repository cases did not execute: {sorted(missing)}")
+        print(f"{flavor}: shell and {len(REPOSITORY_CASES)} repository cases executed and passed")
 
 
 if __name__ == "__main__":
