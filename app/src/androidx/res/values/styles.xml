@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- PdfViewerFragment beta01 explicitly requires an AppCompat-derived host theme. -->
-    <style name="AndroidxPdfReaderTheme" parent="Theme.AppCompat.DayNight.NoActionBar" />
+    <!-- beta01 also dereferences Material text/color attributes during native inflation. -->
+    <style name="AndroidxPdfReaderTheme" parent="Theme.Material3.DayNight.NoActionBar" />
 </resources>
