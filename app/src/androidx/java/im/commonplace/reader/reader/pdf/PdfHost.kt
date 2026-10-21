@@ -55,10 +55,12 @@ class PdfHost(
                 if (closed) return@launch
                 val native = CandidatePdfFragment().also { candidate ->
                     candidate.owner = this@PdfHost
-                    candidate.documentUri = Uri.fromFile(file)
                 }
                 fragment = native
                 activity.supportFragmentManager.beginTransaction().replace(containerId, native, "androidx-pdf:${source.id}").commitNow()
+                // beta01's setter accesses a fragment-scoped ViewModel, so attachment
+                // must precede loading; do not access it on a detached fragment.
+                native.documentUri = Uri.fromFile(file)
                 if (initialLocation != null || highlights.isNotEmpty()) notice("Saved PDF locations are unresolved. $GEOMETRY_LIMIT")
             } catch (cancelled: CancellationException) { throw cancelled }
             catch (failure: VerifiedSourceException) { fail(failure.userMessage) }
