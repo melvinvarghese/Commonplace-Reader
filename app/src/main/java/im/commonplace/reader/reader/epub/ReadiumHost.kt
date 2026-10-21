@@ -69,6 +69,7 @@ class ReadiumHost(
         opening = scope.launch {
             var parsed: Publication? = null
             var transferred = false
+            var stage = "verify-asset"
             try {
                 withContext(Dispatchers.IO) {
                     val assetFile = File(activity.filesDir, source.assetPath).canonicalFile
@@ -85,10 +86,12 @@ class ReadiumHost(
                         // Import already rejects encryption. Recheck at the reader boundary too.
                         if (zip.getEntry("META-INF/encryption.xml") != null) throw UnsupportedEpub("Encrypted EPUB is not supported by this proof.")
                     }
+                    stage = "retrieve-asset"
                     val retriever = AssetRetriever(activity.contentResolver, OfflineHttpClient)
-                    val asset = retriever.retrieve(assetFile.toUrl(isDirectory = false), MediaType.EPUB).getOrElse { throw ReaderOpenFailure("This EPUB could not be opened safely. Your writing is retained.") }
+                    val asset = retriever.retrieve(assetFile.toUrl(isDirectory = false), MediaType.EPUB).getOrElse { throw ReaderOpenFailure("This EPUB could not be opened safely. Your writing is retained.", ErrorException(it)) }
                     var handedToPublication = false
                     try {
+                        stage = "parse-publication"
                         parsed = PublicationOpener(EpubParser(OfflineHttpClient)).open(asset, allowUserInteraction = false, onCreatePublication = {
                             val original = container
                             val contentManifest = manifest
@@ -106,7 +109,7 @@ class ReadiumHost(
                                     }
                                 }
                             }
-                        }).getOrElse { throw ReaderOpenFailure("This EPUB could not be opened safely. Your writing is retained.") }
+                        }).getOrElse { throw ReaderOpenFailure("This EPUB could not be opened safely. Your writing is retained.", ErrorException(it)) }
                         handedToPublication = true
                     } finally { if (!handedToPublication) asset.close() }
                 }
@@ -116,6 +119,7 @@ class ReadiumHost(
                 if (book.isRestricted || book.isProtected) throw UnsupportedEpub("Encrypted EPUB is not supported by this proof.")
                 if ((book.readingOrder + book.resources).any { !EpubContentPolicy.allowsResource(it.mediaType?.toString(), it.href.toString()) }) throw UnsupportedEpub("SVG EPUB resources are not supported by this proof.")
                 if (book.metadata.layout == Layout.FIXED) throw UnsupportedEpub("Fixed-layout EPUB is not supported by this proof.")
+                stage = "configure-navigator"
                 val initial = initialLocation?.let { decode(it) }
                 val templates = HtmlDecorationTemplates.defaultTemplates().apply {
                     this[Decoration.Style.Highlight::class] = HtmlDecorationTemplate(
@@ -156,13 +160,16 @@ class ReadiumHost(
                         },
                     ),
                 )
+                stage = "instantiate-navigator"
                 val fragment = factory.instantiate(activity.classLoader, EpubNavigatorFragment::class.java.name) as EpubNavigatorFragment
                 publication = book
                 navigator = fragment
+                stage = "attach-navigator"
                 activity.supportFragmentManager.beginTransaction().replace(containerId, fragment, "readium:${source.id}").commitNow()
                 transferred = true
                 readyState.value = true
                 scope.launch { fragment.currentLocator.collect { if (!closed) event(ReaderEvent.PositionChanged(source.id, ReadiumLocations.encode(it.toJSON().toString()))) } }
+                stage = "apply-decorations"
                 applyHighlights()
             } catch (cancelled: CancellationException) { throw cancelled }
             catch (unsupported: UnsupportedEpub) {
@@ -172,6 +179,7 @@ class ReadiumHost(
                     notice(unsupported.message.orEmpty())
                 }
             } catch (failure: Exception) {
+                android.util.Log.e("ReadiumHost", "Startup failed at $stage: ${readiumFailureCode(failure)}")
                 if (!closed) event(ReaderEvent.Failed(source.id, (failure as? ReaderOpenFailure)?.message ?: "This EPUB could not be opened safely. Your writing is retained."))
             } finally {
                 if (!transferred) { parsed?.close(); publication = null; navigator = null }
@@ -257,10 +265,19 @@ class ReadiumHost(
         publication = null
     }
     private class UnsupportedEpub(message: String) : IOException(message)
-    private class ReaderOpenFailure(message: String) : IOException(message)
+    private class ReaderOpenFailure(message: String, cause: Throwable? = null) : IOException(message, cause)
 }
 
 /** Both asset retrieval and parser external-container access share this fail-closed client. */
 internal object OfflineHttpClient : HttpClient {
     override suspend fun stream(request: HttpRequest): HttpTry<HttpStreamResponse> = Try.failure(HttpError.IO(IOException("Publication network access is disabled")))
 }
+
+/** Code symbols only: never log exception messages, resource URLs, paths or writing. */
+internal fun readiumFailureCode(failure: Throwable): String =
+    generateSequence(failure) { it.cause }.take(4).joinToString(" <- ") { cause ->
+        val error = (cause as? ErrorException)?.error
+        val actual = (error as? ThrowableError<*>)?.throwable ?: cause
+        val name = if (error != null && error !is ThrowableError<*>) error.javaClass.simpleName else actual.javaClass.simpleName
+        name + "@" + actual.stackTrace.take(3).joinToString(",") { "${it.className}.${it.methodName}:${it.lineNumber}" }
+    }

@@ -233,7 +233,14 @@ class ReadiumProofTest {
         }
         fun navigator(scenario: ActivityScenario<ReaderActivity>): EpubNavigatorFragment {
             var result: EpubNavigatorFragment? = null
-            await { scenario.onActivity { result = it.supportFragmentManager.fragments.filterIsInstance<EpubNavigatorFragment>().singleOrNull()?.takeIf { fragment -> fragment.view != null } }; result != null }
+            await {
+                scenario.onActivity {
+                    val state = androidx.lifecycle.ViewModelProvider(it)[ReaderViewModel::class.java].uiState.value
+                    assertTrue("Reader failed before native attachment: ${state.message}", state.phase != ReaderPhase.Error && state.phase != ReaderPhase.Unsupported)
+                    result = it.supportFragmentManager.fragments.filterIsInstance<EpubNavigatorFragment>().singleOrNull()?.takeIf { fragment -> fragment.view != null }
+                }
+                result != null
+            }
             return result!!
         }
         fun waitForWeb(scenario: ActivityScenario<ReaderActivity>, suffix: String) {

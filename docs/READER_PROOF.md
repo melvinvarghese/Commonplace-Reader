@@ -1,6 +1,6 @@
 # EPUB reader proof ledger — Task 4
 
-**Status: local build passed; final device gate pending.** This ledger is not a completed runtime proof report. The reviewed Task 4 host compiles, but no reader capability or device result below is marked passed. Update this file with measured outcomes and report references after the final run. Do not change Task 4 plan checkboxes here.
+**Status: local build passed; native gate failed and is under diagnosis.** This ledger is not a completed runtime proof report. The reviewed Task 4 host compiles, but no reader capability or device result below is marked passed. Update this file with measured outcomes and report references after the final run. Do not change Task 4 plan checkboxes here.
 
 ## Known evidence checkpoint
 
@@ -35,3 +35,13 @@ TalkBack auditory checks: **Not run / pending owner verification**. Tablet check
 Final Task4 gate and proof status: **Pending**.
 
 The process-death protocol relaunches the app through `monkey`, then explicitly reopens the persisted source in the verification instrumentation. It does not claim automatic last-book launch. Ordinary-suite early-return probe methods are not counted as process-death proof; the separate runner requires exactly one real passing stage and one real passing verify case per flavor.
+
+## First implemented native run
+
+[Run 39563450127](https://github.com/melvinvarghese/Commonplace-Reader/actions/runs/39563450127) at `5b4e13217b5bd6e97616debf6940540ec9f1a25d` passed checks but failed both emulator jobs. Each API 28/API 37 AndroidX report records **53 executed, 5 failures, 0 errors, 0 skips**. All five readable-navigator cases timed out before observing a native fragment; the explicit malformed/DRM/fixed-layout rejection case passed. ComposePdf instrumentation did not execute because the first connected variant failed; both process-kill protocols were not reached. These outcomes are not reading, offline, accessibility or process-death passes. Artifact reports are under `shell-smoke-api-{28,37.0}/app/build/outputs/androidTest-results/connected/debug/flavors/androidx/`.
+
+A targeted Robolectric direct-container host bootstrap passes, which is host-only evidence and does not resolve the real Compose/device failure. Diagnosis continues without changing permissions, dependencies, required assertions, SDK baseline or approved scope.
+
+### Startup diagnostics checkpoint
+
+The exact legal two-chapter fixture is now shared between instrumentation and two local bootstrap cases (direct Fragment container and the actual Compose ReaderActivity path). Both local cases pass; this is not native WebView rendering evidence. Startup failures now retain the toolkit typed cause and log **stage plus exception/code-symbol call sites only**—never exception messages, filenames, document URLs or writing. A privacy test was observed red before implementing this formatter, then passed. The native helper now reports a real Error/Unsupported state immediately while preserving the real-fragment assertion and all required cases. The same full API 28/API 37 matrix is rerun; no gate, SDK, dependency pin, permission or offline restriction was relaxed.
