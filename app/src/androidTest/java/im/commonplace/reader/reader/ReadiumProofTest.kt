@@ -17,6 +17,7 @@ import androidx.compose.ui.test.*
 import androidx.compose.ui.unit.dp
 import android.content.pm.ActivityInfo
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
+import androidx.compose.ui.test.junit4.ComposeTestRule
 import im.commonplace.reader.CommonplaceApplication
 import im.commonplace.reader.ReaderActivity
 import im.commonplace.reader.data.EntryKind
@@ -45,7 +46,7 @@ class ReadiumProofTest {
 
     // Thread.sleep alone freezes a test-clock-owned recomposer even while Android stays idle.
     private fun navigator(scenario: ActivityScenario<ReaderActivity>): EpubNavigatorFragment =
-        Companion.navigator(scenario) { compose.waitForIdle() }
+        Companion.navigator(scenario, compose)
     @Test fun readerOwnsOneRealNavigator() = withBook { source, scenario ->
         val old = navigator(scenario)
         val retiredPublication = nativePublication(old)
@@ -270,10 +271,10 @@ class ReadiumProofTest {
             InstrumentationRegistry.getInstrumentation().runOnMainSync { result = block() }
             @Suppress("UNCHECKED_CAST") return result as T
         }
-        fun navigator(scenario: ActivityScenario<ReaderActivity>, advanceComposition: () -> Unit = {}): EpubNavigatorFragment {
+        fun navigator(scenario: ActivityScenario<ReaderActivity>, compose: ComposeTestRule): EpubNavigatorFragment {
             var result: EpubNavigatorFragment? = null
             await {
-                advanceComposition()
+                compose.waitForIdle()
                 scenario.onActivity {
                     val state = androidx.lifecycle.ViewModelProvider(it)[ReaderViewModel::class.java].uiState.value
                     assertTrue("Reader failed before native attachment: ${state.message}", state.phase != ReaderPhase.Error && state.phase != ReaderPhase.Unsupported)

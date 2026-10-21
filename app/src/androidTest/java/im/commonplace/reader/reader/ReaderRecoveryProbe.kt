@@ -39,7 +39,7 @@ class ReaderRecoveryProbe {
             for (table in listOf("entries", "bookmarks", "reading_state", "reader_drafts")) db.execSQL("DELETE FROM $table WHERE sourceId = ?", arrayOf(source.id))
         }
         ActivityScenario.launch<ReaderActivity>(Intent(context, ReaderActivity::class.java).putExtra("sourceId", source.id)).use { scenario ->
-            val native = ReadiumProofTest.navigator(scenario)
+            val native = ReadiumProofTest.navigator(scenario, compose)
             ReadiumProofTest.waitForWeb(scenario, "one.xhtml")
             val selected = ReadiumProofTest.selectSecond(scenario, native)
             compose.onNodeWithText("Keep selected passage").performScrollTo().performClick()
@@ -81,7 +81,7 @@ class ReaderRecoveryProbe {
         assertEquals(expected.getString("bookmark"), runBlocking { repository.getBookmarks(sourceId).single().location.payloadJson })
         assertEquals(expected.getString("progress"), runBlocking { repository.getProgress(sourceId)!!.payloadJson })
         ActivityScenario.launch<ReaderActivity>(Intent(context, ReaderActivity::class.java).putExtra("sourceId", sourceId)).use { scenario ->
-            val native = ReadiumProofTest.navigator(scenario)
+            val native = ReadiumProofTest.navigator(scenario, compose)
             ReadiumProofTest.waitForWeb(scenario, "two.xhtml")
             compose.onNodeWithTag("reader-reflection").performScrollTo().assertTextContains("Acknowledged draft survives actual process death.")
             assertEquals("EPUB/two.xhtml", ReadiumProofTest.onMain { native.currentLocator.value.href.toString() })
