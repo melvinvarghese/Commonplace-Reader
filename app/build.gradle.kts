@@ -62,6 +62,7 @@ dependencies {
     coreLibraryDesugaring(libs.desugarJdkLibs)
     implementation(platform(libs.composeBom))
     implementation(libs.activityCompose)
+    implementation("androidx.fragment:fragment-ktx:1.9.0")
     implementation(libs.lifecycleViewmodelCompose)
     implementation(libs.lifecycleRuntimeCompose)
     implementation(libs.composeUi)
@@ -73,13 +74,17 @@ dependencies {
     implementation(libs.serializationJson)
     implementation(libs.roomRuntime)
     implementation(libs.roomKtx)
+    implementation(libs.datastorePreferences)
     ksp(libs.roomCompiler)
     implementation(libs.readiumNavigator)
+    implementation("org.readium.kotlin-toolkit:readium-streamer:3.4.0")
+    implementation("org.jsoup:jsoup:1.23.2")
 
     "androidxImplementation"(libs.androidxPdfViewerFragment)
     "composepdfImplementation"(libs.composePdfium)
 
     testImplementation(libs.junit)
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.11.0")
     testImplementation(libs.testExtJunit)
     testImplementation(libs.robolectric)
 
