@@ -69,7 +69,7 @@ class ReadiumProofTest {
         compose.onNodeWithText("Search in book").performScrollTo().performClick()
         compose.onNodeWithTag("reader-search-query").performTextInput(ReaderProofFixture.MULTILINGUAL)
         compose.onNodeWithText("Find").performClick()
-        compose.waitUntil(20_000) { compose.onAllNodesWithTag("reader-search-result").fetchSemanticsNodes().isNotEmpty() }
+        compose.waitUntil(20_000) { compose.onAllNodesWithTag("reader-search-result").fetchSemanticsNodes(atLeastOneRootRequired = false).isNotEmpty() }
         compose.onAllNodesWithTag("reader-search-result").onFirst().performClick()
         waitForWeb(scenario, "one.xhtml")
         val selection = selectSecond(scenario, native)
@@ -124,7 +124,7 @@ class ReadiumProofTest {
             navigator(scenario)
             scenario.onActivity { it.startActivity(Intent(context, ReaderActivity::class.java).putExtra("sourceId", second.id).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)) }
             scenario.moveToState(Lifecycle.State.RESUMED)
-            compose.waitUntil(15_000) { compose.onAllNodesWithText("Document bytes changed. Saved locations are unresolved; your writing is retained.").fetchSemanticsNodes().isNotEmpty() }
+            compose.waitUntil(15_000) { compose.onAllNodesWithText("Document bytes changed. Saved locations are unresolved; your writing is retained.").fetchSemanticsNodes(atLeastOneRootRequired = false).isNotEmpty() }
             scenario.onActivity { assertTrue(it.supportFragmentManager.fragments.filterIsInstance<EpubNavigatorFragment>().isEmpty()) }
         } finally { asset.writeBytes(original) }
     }
@@ -148,7 +148,7 @@ class ReadiumProofTest {
                 assertEquals(PackageManager.PERMISSION_DENIED, context.checkSelfPermission(android.Manifest.permission.INTERNET))
                 // A real external link can request confirmation; it must not be followed automatically.
                 script(scenario, "one.xhtml", "document.querySelector('#external').click(); true")
-                compose.waitUntil(10_000) { compose.onAllNodesWithText("Open external website?").fetchSemanticsNodes().isNotEmpty() }
+                compose.waitUntil(10_000) { compose.onAllNodesWithText("Open external website?").fetchSemanticsNodes(atLeastOneRootRequired = false).isNotEmpty() }
                 compose.onNodeWithText("Cancel").performClick()
                 Thread.sleep(500)
                 assertEquals(0, context.contentResolver.call(authority, "count", null, null)!!.getInt("requests"))
@@ -169,7 +169,7 @@ class ReadiumProofTest {
             assertEquals(beforeSvg, runBlocking { repository.observeSources().first().size })
             val svg = runBlocking { ReaderProofFixture.import(context, ReaderProofFixture.bytes(endpoint, svgResource = true)) }
             launch(svg).use { scenario ->
-                compose.waitUntil(15_000) { compose.onAllNodesWithText("SVG EPUB resources are not supported by this proof.").fetchSemanticsNodes().isNotEmpty() }
+                compose.waitUntil(15_000) { compose.onAllNodesWithText("SVG EPUB resources are not supported by this proof.").fetchSemanticsNodes(atLeastOneRootRequired = false).isNotEmpty() }
                 scenario.onActivity { assertTrue(it.supportFragmentManager.fragments.filterIsInstance<EpubNavigatorFragment>().isEmpty()) }
                 assertEquals(0, context.contentResolver.call(authority, "count", null, null)!!.getInt("requests"))
             }
@@ -213,7 +213,7 @@ class ReadiumProofTest {
         val bytes = instrumentation.context.assets.open("fixtures/fixed-layout.epub").use { it.readBytes() }
         val fixed = runBlocking { ReaderProofFixture.import(context, bytes) }
         launch(fixed).use { scenario ->
-            compose.waitUntil(15_000) { compose.onAllNodesWithText("Fixed-layout EPUB is not supported by this proof.").fetchSemanticsNodes().isNotEmpty() }
+            compose.waitUntil(15_000) { compose.onAllNodesWithText("Fixed-layout EPUB is not supported by this proof.").fetchSemanticsNodes(atLeastOneRootRequired = false).isNotEmpty() }
             scenario.onActivity { assertTrue(it.supportFragmentManager.fragments.filterIsInstance<EpubNavigatorFragment>().isEmpty()) }
         }
     }

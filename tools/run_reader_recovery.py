@@ -3,11 +3,30 @@
 import re
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 REPORTS = Path('build/reports/reader-recovery')
 PROBE = 'im.commonplace.reader.reader.ReaderRecoveryProbe'
 RUNNER = 'androidx.test.runner.AndroidJUnitRunner'
+
+
+def wait_for_fresh_pid(command, package, previous, timeout=10):
+    # monkey returns after submitting the launch, not after ActivityThread starts.
+    deadline = time.monotonic() + timeout
+    while True:
+        result = command(['shell', 'pidof', package], timeout=2)
+        pid = (result.stdout or '').strip()
+        stderr = (result.stderr or '').strip()
+        if result.returncode == 0 and not stderr:
+            if not pid or pid == previous:
+                raise RuntimeError('fresh launcher process not confirmed')
+            return pid
+        if result.returncode != 1 or pid or stderr:
+            raise RuntimeError('PID query failed; process startup not confirmed')
+        if time.monotonic() >= deadline:
+            raise RuntimeError('timed out waiting for a fresh launcher process')
+        time.sleep(0.25)
 
 
 def run_flavor(flavor):
@@ -59,9 +78,7 @@ def run_flavor(flavor):
         if after.returncode != 1 or (after.stdout or '').strip() or (after.stderr or '').strip():
             raise RuntimeError('target process death not confirmed')
         require_success(command(['shell', 'monkey', '-p', package, '1'], timeout=60), 'launcher relaunch failed')
-        relaunched = require_success(command(['shell', 'pidof', package]), 'no live process after launcher relaunch')
-        if not (relaunched.stdout or '').strip() or relaunched.stdout.strip() == before.stdout.strip():
-            raise RuntimeError('fresh launcher process not confirmed')
+        wait_for_fresh_pid(command, package, before.stdout.strip())
         instrument('verify', 'verifyRestoredReader')
         print(f'{flavor}: confirmed save/flush, force-stop, PID disappearance, monkey/fresh PID and native restoration assertions', flush=True)
         return True

@@ -57,3 +57,32 @@ class ReaderRecoveryRunnerTest(unittest.TestCase):
     def test_missing_failed_or_misleading_verification_cannot_pass(self):
         for transcript in ['', 'OK (0 tests)', 'NOT OK (1 test)', 'OK (1 test)\nFAILURES!!!']:
             self.assertFalse(self.exercise(verify=transcript)[0])
+
+    def test_delayed_launcher_pid_is_observed_before_verification(self):
+        from unittest.mock import Mock
+        command = Mock(side_effect=[subprocess.CompletedProcess([], 1, '', ''), subprocess.CompletedProcess([], 0, '5678\n', '')])
+        with patch('time.monotonic', side_effect=[0, 0.1]), patch('time.sleep') as sleep:
+            self.assertEqual('5678', runner.wait_for_fresh_pid(command, 'package', '1234'))
+        self.assertEqual(2, command.call_count)
+        sleep.assert_called_once()
+
+    def test_launcher_pid_wait_is_bounded_and_never_accepts_absence(self):
+        from unittest.mock import Mock
+        command = Mock(return_value=subprocess.CompletedProcess([], 1, '', ''))
+        with patch('time.monotonic', side_effect=[0, 11]), patch('time.sleep'):
+            with self.assertRaisesRegex(RuntimeError, 'timed out'):
+                runner.wait_for_fresh_pid(command, 'package', '1234', timeout=10)
+
+    def test_adb_pid_query_errors_fail_immediately_not_as_startup_delay(self):
+        from unittest.mock import Mock
+        command = Mock(return_value=subprocess.CompletedProcess([], 1, '', 'device offline'))
+        with patch('time.sleep') as sleep:
+            with self.assertRaisesRegex(RuntimeError, 'PID query failed'):
+                runner.wait_for_fresh_pid(command, 'package', '1234')
+        sleep.assert_not_called()
+
+    def test_unchanged_launcher_pid_is_not_accepted(self):
+        from unittest.mock import Mock
+        command = Mock(return_value=subprocess.CompletedProcess([], 0, '1234\n', ''))
+        with self.assertRaisesRegex(RuntimeError, 'fresh launcher process'):
+            runner.wait_for_fresh_pid(command, 'package', '1234')
