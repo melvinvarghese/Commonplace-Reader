@@ -28,7 +28,7 @@ class LargeFixtureStagingTest(unittest.TestCase):
 
 
 class EmulatorSmokeTest(unittest.TestCase):
-    def run_smoke(self, gradle_status=0, reports=True, adb_status=0, recovery_status=0, reader_recovery_status=0, pdf_recovery_status=0):
+    def run_smoke(self, gradle_status=0, reports=True, adb_status=0, recovery_status=0, reader_recovery_status=0, pdf_recovery_status=0, fixture_readback=True):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             (root / 'tools').mkdir()
@@ -38,7 +38,8 @@ class EmulatorSmokeTest(unittest.TestCase):
             (root / 'tools/run_pdf_recovery.py').write_text('import sys; sys.exit(' + str(pdf_recovery_status) + ')\n')
             # Real subprocess boundaries; no emulator is available on this host.
             adb = root / 'adb'
-            adb.write_text('#!/bin/sh\nprintf "adb %s\\n" "$*" >> build/reports/emulator/timeline.txt\nprintf "adb %s\\n" "$*"\ncase "$*" in install*|exec-in*|"shell run-as"*) exit 0 ;; esac\nexit ' + str(adb_status) + '\n')
+            payload = '%PDF-smoke-test' if fixture_readback else 'partial'
+            adb.write_text('#!/bin/sh\nprintf "adb %s\\n" "$*" >> build/reports/emulator/timeline.txt\ncase "$*" in "exec-out run-as im.commonplace.reader.composepdf cat files/proof-large-100mib.pdf") printf "%s" "' + payload + '"; exit 0 ;; esac\nprintf "adb %s\\n" "$*"\ncase "$*" in install*|exec-in*|"shell run-as"*) exit 0 ;; esac\nexit ' + str(adb_status) + '\n')
             adb.chmod(0o755)
             gradle = root / 'gradlew'
             gradle.write_text('''#!/bin/sh
@@ -122,6 +123,11 @@ exit ''' + str(gradle_status) + '\n')
         tests = [i for i, line in enumerate(timeline) if ':app:connectedComposepdfDebugAndroidTest' in line]
         self.assertTrue(builds, 'Downloaded APK signing key must not precede local Gradle signing')
         self.assertLess(builds[0], installs[0]); self.assertLess(installs[0], tests[0])
+
+    def test_successful_send_with_truncated_device_bytes_is_a_gate_failure(self):
+        result, artifacts = self.run_smoke(fixture_readback=False)
+        self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn('staged fixture mismatch', artifacts['build/reports/emulator/fixture-staging.txt'])
 
     def test_diagnostic_failure_cannot_mask_successful_test_gate(self):
         result, artifacts = self.run_smoke(adb_status=9)

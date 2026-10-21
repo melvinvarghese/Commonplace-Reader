@@ -21,7 +21,7 @@ internal object PdfProofFixture {
         InstrumentationRegistry.getInstrumentation().context.assets.open("fixtures/$name").use { input -> file.outputStream().use(input::copyTo) }
         if (large) {
             val fixture = File(context.filesDir, "proof-large-100mib.pdf")
-            check(fixture.isFile && fixture.length() == 100L * 1024 * 1024) { "Transport the shared generated 100 MiB corpus before instrumentation" }
+            check(fixture.isFile && fixture.length() == 100L * 1024 * 1024) { "Shared 100 MiB transport unavailable: exists=${fixture.isFile}; bytes=${fixture.length()}" }
             fixture.inputStream().use { input -> file.outputStream().use(input::copyTo) }
         }
         fun checksum(): String {

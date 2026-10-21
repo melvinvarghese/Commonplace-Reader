@@ -44,24 +44,35 @@ class PdfProofTest {
     }
     private fun source(name: String, large: Boolean = false, isolated: Boolean = false) = PdfProofFixture.source(name, large, isolated)
     private fun launch(source: SourceEntity) = ActivityScenario.launch<ReaderActivity>(Intent(context, ReaderActivity::class.java).putExtra("sourceId", source.id))
-    private fun ready(scenario: ActivityScenario<ReaderActivity>) {
+    private fun ready(scenario: ActivityScenario<ReaderActivity>, label: String? = null) {
         await { state(scenario).phase != ReaderPhase.Opening }
         assertEquals("Both matrix APIs must render; Unsupported is not a feature pass", ReaderPhase.Ready, state(scenario).phase)
         compose.onNodeWithTag("nucleus-pdf-page").assertExists()
-        await {
+        var lastFrame = "No frame sampled"
+        try { await {
             val pixels = compose.onNodeWithTag("nucleus-pdf-page").captureToImage().toPixelMap()
             var ink = 0
             for (y in 0 until pixels.height step 2) for (x in 0 until pixels.width step 2) {
                 val pixel = pixels[x, y]
                 if (pixel.alpha > 0.9f && pixel.red < 0.5f && pixel.green < 0.5f && pixel.blue < 0.5f) ink++
             }
+            lastFrame = "width=${pixels.width}; height=${pixels.height}; sampledInk=$ink"
             ink > 20
+        } } catch (failure: AssertionError) {
+            Log.e("PdfProof", "Painted-page gate failed: $label; $lastFrame", failure)
+            if (label in listOf("rotated-cropped", "large")) {
+                try {
+                    val fd = InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommand("screencap -p /data/local/tmp/composepdf-proof-$label.png")
+                    android.os.ParcelFileDescriptor.AutoCloseInputStream(fd).use { it.readBytes() }
+                } catch (_: Exception) { Log.w("PdfProof", "Failure screenshot unavailable") }
+            }
+            throw failure
         }
     }
     private fun withPdf(name: String, block: (SourceEntity, ActivityScenario<ReaderActivity>) -> Unit) {
         val source = source(name)
         Log.i("PdfProof", "engine=nucleus-composepdf; artifact=158.0.8111.0; api=${Build.VERSION.SDK_INT}; fixture=$name; sha256=${source.checksum}")
-        launch(source).use { scenario -> ready(scenario); block(source, scenario) }
+        launch(source).use { scenario -> ready(scenario, name.substringBefore('.')); block(source, scenario) }
     }
     private fun search(query: String): String {
         compose.onNodeWithTag("pdf-search-query").performTextReplacement(query)
@@ -144,6 +155,9 @@ class PdfProofTest {
         val dump = android.os.ParcelFileDescriptor.AutoCloseInputStream(descriptor).bufferedReader().use { it.readText() }
         File(context.filesDir, "pdf-performance.txt").appendText("\n$phase; api=${Build.VERSION.SDK_INT}; sampledPssKiB=${info.totalPss}\n$dump\n")
         Log.i("PdfProof", "$phase; totalPssKiB=${info.totalPss}")
+        // UTP uninstalls the app after connected tests; preserve every raw line in
+        // its retained per-test logcat instead of relying on a later run-as cat.
+        dump.lineSequence().forEach { Log.i("PdfMemory", "$phase | $it") }
         return info.totalPss
     }
     @Test fun largeDocumentDoesNotDuplicateFullFileBuffers() {
@@ -174,7 +188,7 @@ class PdfProofTest {
             val started = System.nanoTime()
             try {
                 launch(source).use { scenario ->
-                    ready(scenario)
+                    ready(scenario, "large")
                     val elapsedMs = (System.nanoTime() - started) / 1_000_000
                     latencies += elapsedMs
                     recordMemory("large-cycle=$cycle after-first-painted-page")
@@ -183,6 +197,7 @@ class PdfProofTest {
             } finally {
                 running.set(false); sampler.join(5000)
                 peaks += peakPss.get(); duplicateSignals += peakDelta.get()
+                Log.i("PdfProof", "large-cycle=$cycle final; sampledPeakPssKiB=${peakPss.get()}; sampledPeakJavaNativeDelta=${peakDelta.get()}; firstPaintMs=${latencies.getOrNull(cycle) ?: "NOT_REACHED"}; elapsedUntilCloseMs=${(System.nanoTime() - started) / 1_000_000}")
                 System.gc(); Thread.sleep(500)
                 closes += recordMemory("large-cycle=$cycle after-close; upstream async disposal completion unobservable")
             }

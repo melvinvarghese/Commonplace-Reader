@@ -9,6 +9,8 @@ import hashlib
 import shutil
 import subprocess
 import sys
+import tempfile
+import time
 from pathlib import Path
 
 REPORTS = Path('build/reports/emulator')
@@ -17,6 +19,7 @@ RETAINED_RESULTS = REPORTS / 'test-results'
 LARGE_FIXTURE = Path('build/fixture-transport/large-100mib.local.pdf')
 LARGE_FIXTURE_SHA256 = '73c4e34e97311ce559c8755ee9c0e42f27f7fd6bc733db06a61a56fae0f69c6e'
 PDF_PROOF_CLASS = 'im.commonplace.reader.reader.pdf.PdfProofTest'
+PDF_FAILURE_LABELS = ('rotated-cropped', 'large')
 
 
 def capture(folder, name, command, timeout=20):
@@ -105,6 +108,27 @@ def stage_large_composepdf_fixture():
         except (OSError, subprocess.TimeoutExpired) as error:
             output.write(f'error={error}\n')
             status = status or 1
+        if status:
+            return status
+        # exec-in success does not acknowledge remote dd completion. Read back to a
+        # bounded temporary disk file; never load the 100 MiB transport into RAM.
+        for attempt in range(3):
+            command = ['adb', 'exec-out', 'run-as', package, 'cat', 'files/proof-large-100mib.pdf']
+            output.write('$ ' + ' '.join(command) + '\n')
+            try:
+                with tempfile.TemporaryFile() as receipt:
+                    received = subprocess.run(command, stdout=receipt, stderr=output, timeout=180, check=False)
+                    size = receipt.tell(); receipt.seek(0)
+                    checksum = hashlib.file_digest(receipt, 'sha256').hexdigest()
+                output.write(f'readback attempt={attempt}; exit={received.returncode}; bytes={size}; sha256={checksum}\n')
+                if received.returncode == 0 and size == LARGE_FIXTURE.stat().st_size and checksum == LARGE_FIXTURE_SHA256:
+                    return 0
+            except (OSError, subprocess.TimeoutExpired) as error:
+                output.write(f'readback error={error}\n')
+            if attempt < 2:
+                time.sleep(0.5)
+        output.write('staged fixture mismatch: no verified complete device copy\n')
+        status = 1
     return status
 
 
@@ -119,6 +143,10 @@ def run_instrumentation(flavor, *, focused=False):
         stage_status = 1
     else:
         stage_status = prepare_status
+    run_label = 'pdf-focused' if focused else 'full-suite'
+    if flavor == 'composepdf':
+        capture(REPORTS / 'screenshots', f'{run_label}-cleanup',
+                ['adb', 'shell', 'rm', '-f', *[f'/data/local/tmp/composepdf-proof-{label}.png' for label in PDF_FAILURE_LABELS]])
     source = RESULTS / flavor
     if source.exists():
         shutil.rmtree(source)
@@ -134,6 +162,11 @@ def run_instrumentation(flavor, *, focused=False):
     if source.is_dir():
         retained.parent.mkdir(parents=True, exist_ok=True)
         shutil.copytree(source, retained)
+    if flavor == 'composepdf':
+        for label in PDF_FAILURE_LABELS:
+            capture(REPORTS / 'screenshots', f'{run_label}-{label}-pull',
+                    ['adb', 'pull', f'/data/local/tmp/composepdf-proof-{label}.png',
+                     str(REPORTS / 'screenshots' / f'{run_label}-{label}.png')])
     return result.returncode, stage_status
 
 
