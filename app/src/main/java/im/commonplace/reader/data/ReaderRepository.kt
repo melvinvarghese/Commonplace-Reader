@@ -1,6 +1,7 @@
 package im.commonplace.reader.data
 
 import androidx.room.withTransaction
+import im.commonplace.reader.reader.ReaderStore
 import im.commonplace.reader.reader.Capture
 import im.commonplace.reader.reader.SavedLocation
 import java.util.UUID
@@ -13,7 +14,7 @@ class ReaderRepository(
     private val io: CoroutineDispatcher = Dispatchers.IO,
     private val clock: () -> Long = System::currentTimeMillis,
     private val newId: () -> String = { UUID.randomUUID().toString() },
-) {
+) : ReaderStore {
     private val dao = database.readerDao()
 
     suspend fun registerImportedSource(source: SourceEntity): Unit = withContext(io) {
@@ -31,10 +32,12 @@ class ReaderRepository(
         dao.setAvailability(sourceId, SourceAvailability.MISSING, clock())
     }
 
+    override suspend fun getSource(sourceId: String): SourceEntity? = withContext(io) { dao.source(sourceId) }
+    override suspend fun getBookmarks(sourceId: String): List<BookmarkEntity> = withContext(io) { dao.bookmarks(sourceId) }
     fun observeSources() = dao.observeSources()
-    fun observeEntries(sourceId: String) = dao.observeEntries(sourceId)
+    override fun observeEntries(sourceId: String) = dao.observeEntries(sourceId)
 
-    suspend fun saveCapture(
+    override suspend fun saveCapture(
         sourceId: String,
         capture: Capture,
         reflection: String?,
@@ -53,7 +56,7 @@ class ReaderRepository(
         }
     }
 
-    suspend fun saveSourceAnnotation(sourceId: String, body: String): String = withContext(io) {
+    override suspend fun saveSourceAnnotation(sourceId: String, body: String): String = withContext(io) {
         database.withTransaction {
             require(body.isNotBlank()) { "An annotation needs a body" }
             val source = requireSource(sourceId)
@@ -65,7 +68,7 @@ class ReaderRepository(
         }
     }
 
-    suspend fun addBookmark(sourceId: String, location: SavedLocation): String = withContext(io) {
+    override suspend fun addBookmark(sourceId: String, location: SavedLocation): String = withContext(io) {
         database.withTransaction {
             validateLocation(requireSource(sourceId), location)
             val id = nextId()
@@ -74,18 +77,18 @@ class ReaderRepository(
         }
     }
 
-    suspend fun saveProgress(sourceId: String, location: SavedLocation): Unit = withContext(io) {
+    override suspend fun saveProgress(sourceId: String, location: SavedLocation): Unit = withContext(io) {
         database.withTransaction {
             validateLocation(requireSource(sourceId), location)
             dao.upsertProgress(ReadingStateEntity(sourceId, location, clock()))
         }
     }
 
-    suspend fun getProgress(sourceId: String): SavedLocation? = withContext(io) {
+    override suspend fun getProgress(sourceId: String): SavedLocation? = withContext(io) {
         dao.progress(sourceId)?.location
     }
 
-    suspend fun saveDraft(draft: ReaderDraftEntity): Unit = withContext(io) {
+    override suspend fun saveDraft(draft: ReaderDraftEntity): Unit = withContext(io) {
         database.withTransaction {
             require(draft.capture.quotation.isNotBlank()) { "A capture draft needs a quotation" }
             validateLocation(requireSource(draft.sourceId), draft.capture.location)
@@ -93,7 +96,7 @@ class ReaderRepository(
         }
     }
 
-    suspend fun getDraft(sourceId: String): ReaderDraftEntity? = withContext(io) {
+    override suspend fun getDraft(sourceId: String): ReaderDraftEntity? = withContext(io) {
         dao.draft(sourceId)
     }
 
