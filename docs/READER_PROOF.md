@@ -1,6 +1,55 @@
 # EPUB reader proof ledger — Task 4
 
-**Status: Task 4 blocked; not a completed proof or usable-reader claim.** Latest full run 39595102330 has a real API 28 Compose teardown crash and API 37 draft-recovery staging timeouts. Local strict checks pass; prior partial native passes do not close these failures. The owner-approved stable-container candidate now passes the complete strict local gate and focused code review, but has not yet passed its native/recovery matrix. The final evidence matrix below remains pending.
+**Task 4 complete for the bounded automated proof.** [CI run 39599700257](https://github.com/melvinvarghese/Commonplace-Reader/actions/runs/39599700257) verified source/test commit `d467a0880227eb0ee45d96128eb6d20609ce6233`: `checks`, `smoke (28)` and `smoke (37.0)` all succeeded. Downloaded XML, recovery transcripts, device metadata and lint reports were reconciled; the named-case guard also passed against both downloaded report trees. Any later completion commit changes documentation only, not this verified application/test tree. Task 5 has not started.
+
+## What passed
+
+Counts are actual JUnit reports, not inferred from compilation. Every row has **zero failures, errors or skips**.
+
+| Emulator / flavor | Ordinary reports | Native EPUB cases | Actual reader death/reopen |
+| --- | ---: | ---: | --- |
+| API 28 / AndroidX | 54 | 7 | Passed; PID 8107 → absent → 8160 |
+| API 28 / ComposePdf | 54 | 7 | Passed; PID 8537 → absent → 8586 |
+| API 37 / AndroidX | 54 | 7 | Passed; PID 6861 → absent → 6917 |
+| API 37 / ComposePdf | 54 | 7 | Passed; PID 7299 → absent → 7354 |
+
+There are **216 ordinary reports**, comprising **200 functional cases** and **16 deliberately gated/no-op probe reports**. The 28 actual native EPUB cases are included in the 200; no-op probe methods are not process-death evidence. Each combination additionally passed a separate real reader recovery protocol: one passing stage case, a durable readiness marker, a confirmed live PID, force-stop, confirmed PID absence, `monkey` relaunch to a different live PID, then one passing restoration case. All four separate interrupted-import kill/reopen verifications also passed.
+
+The checks artifact records **76 JVM tests per flavor (152 total)**, zero failures/errors/skips. CI logs record **41 Python regressions** and **five fixture-generator tests**, plus byte-identical regeneration of the committed small corpus and generation of the large fixture outside APK assets. Both flavors passed strict-dependency-verification unit/lint/app/test-APK tasks. Lint has **zero errors and 16 retained warnings per flavor**, not zero warnings.
+
+## Task 4 acceptance
+
+1. **State and persistence:** deterministic tests cover repository acknowledgment before Saved, retryable failures retaining input, cancellation, stale-source events, 500 ms progress coalescing, 300 ms draft debounce and immediate boundary flushes. Locator tests preserve complete native JSON, including unknown fields, while rejecting mismatched engine/version identity. DataStore restart persistence is covered. The separate native recovery asserts exact stored quotation, reflection, selection JSON, bookmark JSON, progress JSON and acknowledged pending draft, then renders the restored chapter and capture decoration. Unacknowledged input is not promised durable.
+2. **Real reading and capture:** the native cases use Readium's supported `EpubNavigatorFragment`, select the second repeated passage with native context, retain the full locator, save reflection and a bookmark elsewhere, reopen the capture with a visibly painted in-viewport Decoration API highlight, reopen the bookmark, search multilingual text, and explicitly save a source annotation. Malformed, DRM/encrypted, fixed-layout and standalone SVG inputs/resources take explicit rejection paths.
+3. **Lifecycle and source identity:** real configuration changes and source switching leave one navigator in the current Activity and retire prior native views/resources. A changed source checksum marks locations unresolved instead of applying coordinates. The new required stress case runs three panel-show / short-window / full-window / panel-hide cycles in one Activity lifetime, checks the same native container/view and sole navigator in both actual layouts, then checks controlled destruction and retired publication access. The previously failing native selection/reopen case also passes in all four combinations.
+4. **Offline and link policy:** the controlled endpoint first proves it is listening and usable. The hostile book then renders local text with zero endpoint requests; authored scripts/handlers/frames and unsafe URL schemes are removed, scripted SVG paths are rejected, an unknown-host script request fails closed, and the external-link confirmation prompt can be cancelled without fetching. No INTERNET permission, offline-deny HTTP transport, parsed-content filtering and CSP are combined defenses—not a claim based only on a missing permission. Trusted Readium JavaScript and its internal bridge remain; the app adds no unrestricted bridge. Browser handoff after affirmative consent was not exercised.
+5. **Accessibility and preferences:** all four combinations pass actual 200% system-font configuration, dark native reading preference, landscape recreation and measured 48 dp control dimensions. Semantics/control reachability is automated evidence, not a spoken TalkBack reading session or a measurement of all EPUB typography at 200%.
+6. **Publication:** README and TESTING are reconciled to these measured capabilities. Integration is a normal fetch/fast-forward/no-force update of the already-verified source, followed only by documentation changes. The earlier failures below remain historical evidence, not substituted passes.
+
+## Devices and traceable artifacts
+
+Both are disposable `test(AVD)` Google APIs x86_64 emulators using Android Emulator **37.2.12**. API 28 is Android **9**, model `Android SDK built for x86_64`, image revision **11**; SDK extension properties are absent (not applicable to that baseline). API 37.0 is Android **17**, model `sdk_gphone64_x86_64`, image revision **6**, declared extension **22** and guest R/S/T/U/V/B/C extension properties **22**. These are observed image versions, not a guarantee that future unversioned SDK downloads will produce the same revision. Full fingerprints and package properties are retained in the artifacts.
+
+The [successful run](https://github.com/melvinvarghese/Commonplace-Reader/actions/runs/39599700257) contains `foundation-checks` and `shell-smoke-api-28` / `shell-smoke-api-37.0`. Within each smoke artifact:
+
+- Ordinary XML: `app/build/outputs/androidTest-results/connected/debug/flavors/{androidx,composepdf}/TEST-test(AVD) - {9,17}.xml` (9 for API 28, 17 for API 37).
+- Actual reader stage/kill/relaunch/verify transcript: `build/reports/reader-recovery/{androidx,composepdf}/recovery.txt`.
+- Interrupted-import transcripts: `build/reports/import-recovery/{androidx,composepdf}/{stage,verify}.txt`.
+- Image/tool versions and guest properties: `build/reports/emulator/host-sdk.txt` and `build/reports/emulator/before/properties.txt`.
+
+`foundation-checks/app/build/test-results/test{Androidx,Composepdf}DebugUnitTest/` holds the JVM XML; `foundation-checks/app/build/reports/lint-results-{androidx,composepdf}Debug.xml` holds the lint counts. CI artifacts have seven-day retention. The reconciled local copy is `/workspace/task4-stable-pane-native-artifacts/`; these paths are supporting evidence, not files committed to Git.
+
+The legal two-chapter fixture is **Original reader proof**, identifier `urn:uuid:1ec06ebc-bcff-43bd-bb35-c66206d31e64`, authored in [ReaderProofFixture.kt](../app/src/sharedTest/java/im/commonplace/reader/reader/ReaderProofFixture.kt) at the verified commit. Its recipe SHA-256 is `6db430962b3095460d144cd518be9a5a644b3c69bdb26125943cd9991373f4a7`. The shared corpus [manifest](../app/src/androidTest/assets/fixtures/manifest.json) has SHA-256 `8c0b20b04ed0927bf9fd37e4a9f625b5fafd25ea99827d584b267d9e5cc2470e` and lists the committed corpus file hashes. Hostile variants include a per-run controlled endpoint; no single fixed ZIP hash is claimed for those generated variants. The recipe hash identifies source bytes, not an independently retained runtime EPUB digest.
+
+## Limits and checks not run
+
+This proof covers **Readium Kotlin 3.4.0's supported older navigator** on the original synthetic **reflowable, UTF-8, non-encrypted EPUB corpus without standalone SVG resources**. It is not general EPUB conformance, universal hostile-document safety or a public device-support promise. Full editing, collection search, Markdown export, backup/restore, Obsidian integration and PDF reading are not implemented by Task 4. The saved-items panel is a small proof/debug surface, not a full commonplace editor.
+
+**Not run:** spoken TalkBack reading/control audit, tablet layout, physical-device testing, affirmative external-browser handoff, SAF picker UI automation and real cloud-provider permission-revocation UI. Automated semantics, font/dark/landscape tests do not stand in for those checks. They remain explicit manual/coverage gaps rather than hidden passes. Process recovery relaunches through `monkey` and then explicitly reopens the persisted source during verification; automatic last-book launch is not claimed.
+
+## Historical implementation checkpoints
+
+The sections below describe the status at each earlier checkpoint. Their pending/failed wording is historical and is superseded by the complete successful matrix above. In particular, the existing native failure is the pre-correction runtime red evidence; the newly added resize case was not run against the old layout, so a separate new-case red/green runtime claim is not made.
 
 ## Initial implementation evidence (historical)
 
@@ -8,33 +57,6 @@
 - Test-first Task4 CI run [39560371312](https://github.com/melvinvarghese/Commonplace-Reader/actions/runs/39560371312) recorded native expected-result failures on **both API 28 and API 37**, plus an ancillary empty-shell isolation failure. This is not a final implementation result and is not a pass.
 - The reviewed host passed strict-dependency-verification unit/lint/app/test-APK assembly for both flavors. JVM XML records **66 tests per flavor (132 total), zero failures/errors/skips**, including 10 ReaderViewModel cases, locator/selection contracts, DataStore restart persistence and parsed-content/SVG policy. Python CI guards: **36 passed**. This is host/build evidence, not native rendering evidence.
 - Independent review identified standalone SVG active content bypassing XHTML sanitization. The boundary now rejects declared SVG or decoded `.svg` resources before attachment and at resource lookup. The unit regression was observed red first; narrow follow-up review accepted the fix. Scripted SVG non-execution remains part of the pending controlled-endpoint device proof.
-
-## Proof boundary
-
-The target is Readium Kotlin 3.4.0 using its supported `EpubNavigatorFragment` API (not the next navigator). The proof is limited to the original synthetic corpus: **reflowable, UTF-8, non-encrypted EPUBs without standalone SVG resources**. It is not general EPUB conformance. Fixed-layout, standalone SVG resources and DRM/encrypted EPUBs are unsupported in this proof. PDF is Task 5 and is not covered here.
-
-The planned assertions cover one real navigator/session; exact native locator preservation; native selection, search and Decoration API highlights; durable Room captures/bookmarks/progress and return-to-capture; explicitly saved source annotations; dark-reading preference observation; source-switch cleanup; and retaining writing while marking locations unresolved after a missing/checksum-mismatched source. `href`/CFI and other locator fields must remain native and untouched: no quote reconstruction or pixel-offset location approximation. Capture drafts are acknowledged only after durable persistence; a capture is reported saved only after its Room transaction; source annotations require explicit save and are not saved through draft autosave.
-
-The security test target is app-private local reading with no `INTERNET` permission, an offline deny-all HTTP client, parsed-XHTML sanitization before the trusted Readium HTML injector, and CSP. Publication-origin scripts are removed; trusted Readium scripts remain. External HTTP(S) links require explicit confirmation. The app installs no additional native JavaScript bridge. Do **not** claim WebView JavaScript is disabled or that Readium itself has no bridge. These runtime properties remain unverified until the final device tests pass.
-
-The UI is a proof/debug surface with a simple saved-items panel, not a full editor. Planned accessibility checks include 200% system text, dark reading, landscape and 48 dp controls. TalkBack auditory and tablet checks are unrun unless the final evidence explicitly says otherwise.
-
-## Final evidence to record
-
-| Gate | API 28 / AndroidX flavor | API 28 / ComposePdf flavor | API 37 / AndroidX flavor | API 37 / ComposePdf flavor |
-| --- | --- | --- | --- | --- |
-| Current commit, CI run URL, complete host/unit/lint/assemble result | **Pending** | **Pending** | **Pending** | **Pending** |
-| `ReadiumProofTest`: executed/passed/failed/errored/skipped counts and actual assertions | **Pending** | **Pending** | **Pending** | **Pending** |
-| Offline hostile publication: local render, sanitized content, zero controlled-endpoint requests, confirmed external-link prompt | **Pending** | **Pending** | **Pending** | **Pending** |
-| Accessibility test: 200% text, dark, landscape, measured 48 dp controls | **Pending** | **Pending** | **Pending** | **Pending** |
-| `tools/run_reader_recovery.py`: confirmed save/flush, live PID, force-stop, PID disappearance, `monkey` fresh process, restored capture/bookmark/progress/locator and acknowledged pending draft; log path | **Pending** | **Pending** | **Pending** | **Pending** |
-
-Record device/emulator identity, API and SDK extension level, ABI, flavor, build commit, fixture identity/hash, exact executed/failed/errored/skipped counts, and CI XML/log paths. Do not count intentionally gated/no-op probe methods as process-death evidence. Report any failures, skips or unrun cases explicitly; do not infer success from workflow creation or an earlier task's run.
-
-TalkBack auditory checks: **Not run / pending owner verification**. Tablet checks: **Not run / pending owner verification**. Physical-device testing: **Not established**.  
-Final Task4 gate and proof status: **Pending**.
-
-The process-death protocol relaunches the app through `monkey`, then explicitly reopens the persisted source in the verification instrumentation. It does not claim automatic last-book launch. Ordinary-suite early-return probe methods are not counted as process-death proof; the separate runner requires exactly one real passing stage and one real passing verify case per flavor.
 
 ## First implemented native run
 
