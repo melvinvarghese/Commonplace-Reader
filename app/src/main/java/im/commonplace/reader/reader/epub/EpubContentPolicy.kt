@@ -27,10 +27,13 @@ object EpubContentPolicy {
                 }
             }
         }
-        // No publication-origin scripts or inline script allowance. evaluateJavascript is
-        // used internally by the supported navigator; no application bridge is installed.
+        // CSP host-source syntax rejects SDK 3.4.0's underscore virtual hosts.
+        // Permit only its exact trusted script path; author scripts/handlers were removed
+        // above. Wildcard-host requests still fail closed in WebViewServer/container and
+        // OfflineHttpClient, and the app has no INTERNET permission. No inline scripts,
+        // unsafe-eval, application bridge or duplicate SDK script injection is enabled.
         document.head().prependElement("meta").attr("http-equiv", "Content-Security-Policy").attr("content",
-            "default-src 'none'; script-src https://readium_assets; style-src https://readium_assets https://readium_package 'unsafe-inline'; img-src https://readium_package data: blob:; font-src https://readium_assets https://readium_package data:; media-src https://readium_package; connect-src 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'")
+            "default-src 'none'; script-src https://*/readium/scripts/readium-reflowable.js; style-src 'self' https://*/readium/ 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' https://*/readium/ data:; media-src 'self'; connect-src 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'")
         return document.outerHtml().toByteArray(StandardCharsets.UTF_8)
     }
 }

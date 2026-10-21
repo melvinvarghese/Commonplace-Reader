@@ -65,7 +65,7 @@ class ReadiumProofTest {
     @Test fun exactNativeSelectionCaptureBookmarkReopenDecorationAndSearch() = withBook { source, scenario ->
         val native = navigator(scenario)
         waitForWeb(scenario, "one.xhtml")
-        assertTrue(script(scenario, "one.xhtml", "document.body.textContent").contains(ReaderProofFixture.MULTILINGUAL))
+        assertTrue(org.json.JSONTokener(script(scenario, "one.xhtml", "document.body.textContent")).nextValue().toString().contains(ReaderProofFixture.MULTILINGUAL))
         compose.onNodeWithText("Search in book").performScrollTo().performClick()
         compose.onNodeWithTag("reader-search-query").performTextInput(ReaderProofFixture.MULTILINGUAL)
         compose.onNodeWithText("Find").performClick()
@@ -94,8 +94,13 @@ class ReadiumProofTest {
         compose.onNodeWithText("Saved items").performScrollTo().performClick()
         compose.onAllNodesWithTag("reader-open-capture").onFirst().performScrollTo().performClick()
         waitForWeb(scenario, "one.xhtml")
-        await { script(scenario, "one.xhtml", "document.querySelectorAll('.commonplace-proof-highlight').length").trim('"') != "0" }
+        await { script(scenario, "one.xhtml", "Array.from(document.querySelectorAll('.commonplace-proof-highlight')).some(function(e){var r=e.getBoundingClientRect(),s=getComputedStyle(e);return r.width>0 && r.height>0 && r.right>0 && r.bottom>0 && r.left<innerWidth && r.top<innerHeight && Number(s.opacity)>0 && s.backgroundColor!=='rgba(0, 0, 0, 0)';})") == "true" }
         assertEquals(selection.toJSON().toString(), runBlocking { repository.observeEntries(source.id).first().single { it.id == entry.id }.location!!.payloadJson })
+        val savedBookmark = runBlocking { repository.getBookmarks(source.id).single() }
+        compose.onNodeWithText("Saved items").performScrollTo().performClick()
+        compose.onAllNodesWithTag("reader-open-bookmark").onFirst().performScrollTo().performClick()
+        waitForWeb(scenario, "two.xhtml")
+        assertEquals(savedBookmark.location.payloadJson, runBlocking { repository.getBookmarks(source.id).single().location.payloadJson })
         compose.onNodeWithText("Saved items").performScrollTo().performClick()
         compose.onNodeWithTag("reader-annotation").performScrollTo().performTextInput("Synthetic source annotation")
         compose.onNodeWithText("Save annotation").performScrollTo().performClick()
@@ -133,9 +138,13 @@ class ReadiumProofTest {
         try {
             launch(source).use { scenario ->
                 navigator(scenario); waitForWeb(scenario, "one.xhtml")
-                assertTrue(script(scenario, "one.xhtml", "document.body.textContent").contains(ReaderProofFixture.MULTILINGUAL))
+                assertTrue(org.json.JSONTokener(script(scenario, "one.xhtml", "document.body.textContent")).nextValue().toString().contains(ReaderProofFixture.MULTILINGUAL))
                 assertEquals("0", script(scenario, "one.xhtml", "document.querySelectorAll('script:not([src^=\"https://readium_assets/\"]),iframe,object,[onmouseover]').length").trim('"'))
                 assertEquals("null", script(scenario, "one.xhtml", "document.querySelector('#unsafe').getAttribute('href')"))
+                val chapterPolicy = org.json.JSONTokener(script(scenario, "one.xhtml", "document.querySelector('meta[http-equiv=\"Content-Security-Policy\"]').content")).nextValue().toString()
+                assertTrue(chapterPolicy.contains("script-src https://*/readium/scripts/readium-reflowable.js"))
+                assertFalse(chapterPolicy.contains("https://readium_"))
+                assertEquals("true", script(scenario, "one.xhtml", "typeof readium.getCurrentSelection === 'function'"))
                 assertEquals(PackageManager.PERMISSION_DENIED, context.checkSelfPermission(android.Manifest.permission.INTERNET))
                 // A real external link can request confirmation; it must not be followed automatically.
                 script(scenario, "one.xhtml", "document.querySelector('#external').click(); true")
@@ -143,8 +152,22 @@ class ReadiumProofTest {
                 compose.onNodeWithText("Cancel").performClick()
                 Thread.sleep(500)
                 assertEquals(0, context.contentResolver.call(authority, "count", null, null)!!.getInt("requests"))
+                // Deliberately exercise the wildcard-host CSP path via privileged test code.
+                // The publication cannot author this tag: its scripts were removed above.
+                script(scenario, "one.xhtml", "(function(){var probe=document.createElement('script');probe.src='https://blocked.invalid/readium/scripts/readium-reflowable.js';document.head.appendChild(probe);return true;})()")
+                compose.waitUntil(10_000) {
+                    var denied = false
+                    scenario.onActivity { denied = androidx.lifecycle.ViewModelProvider(it)[ReaderViewModel::class.java].uiState.value.phase == ReaderPhase.Error }
+                    denied
+                }
+                assertEquals(0, context.contentResolver.call(authority, "count", null, null)!!.getInt("requests"))
             }
-            val svg = runBlocking { ReaderProofFixture.import(context, ReaderProofFixture.bytes(endpoint, svgSpine = true)) }
+            val beforeSvg = runBlocking { repository.observeSources().first().size }
+            val svgSpineBytes = ReaderProofFixture.bytes(endpoint, svgSpine = true)
+            val rejectedSpine = runBlocking { DocumentImporter(context.contentResolver, context.filesDir, repository, openStream = { ByteArrayInputStream(svgSpineBytes) }).importDocument(Uri.parse("content://reader-proof/scripted-svg-spine")) }
+            assertTrue("Non-XHTML spines must be rejected by the existing importer", rejectedSpine is ImportResult.Unsupported)
+            assertEquals(beforeSvg, runBlocking { repository.observeSources().first().size })
+            val svg = runBlocking { ReaderProofFixture.import(context, ReaderProofFixture.bytes(endpoint, svgResource = true)) }
             launch(svg).use { scenario ->
                 compose.waitUntil(15_000) { compose.onAllNodesWithText("SVG EPUB resources are not supported by this proof.").fetchSemanticsNodes().isNotEmpty() }
                 scenario.onActivity { assertTrue(it.supportFragmentManager.fragments.filterIsInstance<EpubNavigatorFragment>().isEmpty()) }
@@ -215,7 +238,7 @@ class ReadiumProofTest {
     private fun launch(source: SourceEntity): ActivityScenario<ReaderActivity> = ActivityScenario.launch(Intent(context, ReaderActivity::class.java).putExtra("sourceId", source.id))
     private fun awaitNavigatorForSource(scenario: ActivityScenario<ReaderActivity>, old: EpubNavigatorFragment): EpubNavigatorFragment {
         var found: EpubNavigatorFragment? = null
-        await { scenario.onActivity { found = it.supportFragmentManager.fragments.filterIsInstance<EpubNavigatorFragment>().singleOrNull()?.takeUnless { current -> current === old } }; found != null }
+        await { compose.waitForIdle(); scenario.onActivity { found = it.supportFragmentManager.fragments.filterIsInstance<EpubNavigatorFragment>().singleOrNull()?.takeUnless { current -> current === old } }; found != null }
         return found!!
     }
     companion object {
@@ -248,7 +271,8 @@ class ReadiumProofTest {
             return result!!
         }
         fun waitForWeb(scenario: ActivityScenario<ReaderActivity>, suffix: String) {
-            await { script(scenario, suffix, "document.readyState == 'complete' && !!document.body").trim('"') == "true" }
+            val marker = JSONObject.quote(if (suffix.endsWith("one.xhtml")) ReaderProofFixture.MULTILINGUAL else "A different place for a durable bookmark.")
+            await { script(scenario, suffix, "document.readyState == 'complete' && !!document.body && typeof readium !== 'undefined' && typeof readium.getCurrentSelection === 'function' && document.body.textContent.indexOf($marker) >= 0").trim('"') == "true" }
         }
         fun script(scenario: ActivityScenario<ReaderActivity>, suffix: String, js: String): String {
             var result = "null"

@@ -28,6 +28,17 @@ class EpubContentPolicyTest {
         assertTrue(EpubContentPolicy.allowsResource("application/xhtml+xml", "EPUB/one.xhtml"))
         assertTrue(EpubContentPolicy.allowsResource("image/png", "EPUB/image.png"))
     }
+    @Test fun cspAuthorizesOnlyThePinnedScriptPathWithoutInvalidVirtualHostSources() {
+        val safe = Jsoup.parse(EpubContentPolicy.sanitize("<html><body>local</body></html>".toByteArray()).toString(StandardCharsets.UTF_8))
+        val csp = safe.select("meta[http-equiv=Content-Security-Policy]").single().attr("content")
+        val directives = csp.split(';').map { it.trim() }
+        assertEquals("script-src https://*/readium/scripts/readium-reflowable.js", directives.single { it.startsWith("script-src ") })
+        assertFalse(csp.contains("https://readium_"))
+        assertTrue(directives.contains("img-src 'self' data: blob:"))
+        assertTrue(directives.contains("media-src 'self'"))
+        assertTrue(directives.contains("connect-src 'none'"))
+        assertTrue(directives.contains("object-src 'none'"))
+    }
     @Test fun rejectsOversizeAndEntityDeclarationsBeforeParsing() {
         assertThrows(IllegalArgumentException::class.java) { EpubContentPolicy.sanitize(ByteArray(2 * 1024 * 1024 + 1)) }
         assertThrows(IllegalArgumentException::class.java) { EpubContentPolicy.sanitize("<!DOCTYPE html [<!ENTITY x SYSTEM 'file:///private'>]><html>&x;</html>".toByteArray()) }
