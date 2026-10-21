@@ -9,8 +9,22 @@ SHELL_ONLY = ('<testsuites tests="1" failures="0" errors="0" skipped="0">'
            '<testsuite><testcase name="launchAndNavigate" '
            'classname="im.commonplace.reader.ui.ShellTest"/></testsuite></testsuites>')
 
-REPOSITORY_CASES = ('unicodeCaptureAndAnnotationRecoverExactValuesAndSourceAttribution', 'blankCaptureIsRejectedWithoutAnEntry', 'progressAndTwoBookmarksRemainIndependentAfterReopen', 'draftSurvivesReopenAndNeverAppearsAsEntry', 'successfulCaptureClearsDraftInSameCommit', 'failedCaptureRetainsDraftAndLeavesNoEntry', 'failureAfterInsertRollsBackEntryAndDraftDeletion', 'missingSourceAndFormatMismatchCannotCreatePartialRecords', 'unknownLocationVersionRemainsRecoverableButCannotOverwriteProgress', 'cancellationPropagatesWithoutAcknowledgingOrSaving', 'sourceDeletionRetainsWritingAndAttributionButRemovesDependentState', 'duplicateChecksumAndDanglingForeignKeysAreRejected', 'invalidDraftOrBlankAnnotationDoesNotOverwriteExistingWriting')
-PASSING = SHELL_ONLY.replace("</testsuite>", "".join(
+REPOSITORY_CASES = (
+    'unicodeCaptureAndAnnotationRecoverExactValuesAndSourceAttribution',
+    'blankCaptureIsRejectedWithoutAnEntry',
+    'progressAndTwoBookmarksRemainIndependentAfterReopen',
+    'draftSurvivesReopenAndNeverAppearsAsEntry',
+    'successfulCaptureClearsDraftInSameCommit',
+    'failedCaptureRetainsDraftAndLeavesNoEntry',
+    'failureAfterInsertRollsBackEntryAndDraftDeletion',
+    'missingSourceAndFormatMismatchCannotCreatePartialRecords',
+    'unknownLocationVersionRemainsRecoverableButCannotOverwriteProgress',
+    'cancellationPropagatesWithoutAcknowledgingOrSaving',
+    'sourceDeletionRetainsWritingAndAttributionButRemovesDependentState',
+    'duplicateChecksumAndDanglingForeignKeysAreRejected',
+    'invalidDraftOrBlankAnnotationDoesNotOverwriteExistingWriting',
+)
+PASSING = SHELL_ONLY.replace('tests="1"', 'tests="14"').replace("</testsuite>", "".join(
     f'<testcase name="{name}" classname="im.commonplace.reader.data.ReaderRepositoryTest"/>'
     for name in REPOSITORY_CASES) + "</testsuite>")
 

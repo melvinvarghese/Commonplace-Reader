@@ -6,13 +6,11 @@
 
 The native Kotlin/Compose shell has Library and Settings & data destinations, an honest empty library, and light/dark colors. It contains no sample books or nonfunctional export/sync controls.
 
-Both temporary PDF comparison flavors pass unit/lint/build checks and genuine shell launch/navigation instrumentation on API 28 and API 37.0 in the single [tool-selection validation](https://github.com/melvinvarghese/Commonplace-Reader/actions/runs/39535925337) at `ef778c6`. Downloaded instrumentation XML confirms one executed passing `ShellTest.launchAndNavigate` per flavor per API: four tests total, zero failures/errors/skips. Thirteen Python guard/runner regression tests also pass. JVM reports contain one passing case per flavor restored from older cached outputs, not newly executed JVM cases. A successful shell launch is not proof that a reader works.
+Task 2 adds a Room-backed repository for sources, Unicode captures/reflections, source annotations, independent bookmarks/progress and recoverable capture drafts. Capture insertion and draft clearing share a transaction; attribution comes from the stored source. The schema and location contracts are documented in [DATA_MODEL](docs/DATA_MODEL.md). Both flavors pass 24 host tests each (including file-backed repository recovery/rollback), lint and app/test-APK builds; 15 Python CI-guard tests pass. Device repository verification is pending the implementation CI run. This is tested storage infrastructure, not a user-facing notebook or editor.
 
-Not implemented yet: document import, EPUB/PDF reading, durable notes/highlights/bookmarks/progress, Commonplace and Search destinations, Markdown export, backup/restore, or Obsidian integration. This is not a beta or a release-ready APK.
+The earlier [shell validation](https://github.com/melvinvarghese/Commonplace-Reader/actions/runs/39535925337) at `ef778c6` passed genuine launch/navigation instrumentation for both flavors on API 28 and API 37.0 (four executed tests). Task 2 adds file-backed repository instrumentation and host tests; its exact verification outcomes are recorded in [development notes](docs/DEVELOPMENT.md). A successful shell launch or durable record test is not proof that a reader works.
 
-The API 37 tool-selection fix uses the newer command-line tools already installed by the unchanged setup action, rather than the pinned emulator runner's older `latest` directory. Pre-boot evidence records `/usr/local/lib/android/sdk/cmdline-tools/16111833/bin/avdmanager`, revision **23.0**, and outer `test.ini` **`target=android-37.0`**. A hard assertion stops before boot if that target is wrong. Image, runner, toolchain and dependency pins, requested RAM/userdata/GPU settings, API 28 control, app assertions and executed-test guards remain unchanged. No second workflow or rerun was started.
-
-The earlier [setup-only diagnostic](https://github.com/melvinvarghese/Commonplace-Reader/actions/runs/39535057134) established that the runner had selected revision 12.0 and generated `target=android-0`. With the selection corrected, the prior graphics assertion is absent from retained boot/live captures and package/activity/mount services remain present through the test/probe snapshots. This single successful comparison clears the observed API 37 shell gate; it does not establish long-term emulator stability or reader compatibility. Task 2 has not started and is outside this bounded fix. See [development notes](docs/DEVELOPMENT.md) for evidence and earlier failed experiments.
+Not implemented yet: document import, EPUB/PDF reading, capture/editor UI, Commonplace and Search destinations, Markdown export, backup/restore, or Obsidian integration. This is not a beta or a release-ready APK.
 
 ## Build
 
@@ -32,7 +30,7 @@ With an emulator/device connected:
 ./gradlew :app:connectedAndroidxDebugAndroidTest :app:connectedComposepdfDebugAndroidTest
 ```
 
-[CI](https://github.com/melvinvarghese/Commonplace-Reader/actions) builds both flavors and schedules shell smoke tests on API 28 and API 37. Workflow creation does not mean a run has passed. See [DEVELOPMENT](docs/DEVELOPMENT.md) for exact dependencies, prerequisites, evidence and limitations.
+[CI](https://github.com/melvinvarghese/Commonplace-Reader/actions) builds both flavors and runs shell and file-backed repository instrumentation on API 28 and API 37. Its result guard requires each named durability case in both flavors. Workflow creation does not mean a run has passed. See [DEVELOPMENT](docs/DEVELOPMENT.md) for exact dependencies, prerequisites, evidence and limitations.
 
 ## Reader comparison
 

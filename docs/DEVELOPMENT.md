@@ -33,14 +33,15 @@ Do not commit `local.properties`, SDK paths, private documents or build outputs.
 | Readium navigator | `org.readium.kotlin-toolkit:readium-navigator:3.4.0` |
 | AndroidX PDF | `androidx.pdf:pdf-viewer-fragment:1.0.0-beta01` |
 | ComposePdfReader PDFium | `dev.nucleusframework:pdfium:158.0.8111.0` |
-| Room / DataStore (reserved catalog pins, not integrated yet) | 2.8.5 / 1.2.1 |
+| Room / DataStore | 2.8.5 integrated / 1.2.1 reserved, not integrated |
+| JSON envelope / host Android tests | kotlinx.serialization-json 1.11.0 / Robolectric 4.17 |
 | JUnit / AndroidX test JUnit / runner / Espresso | 4.13.2 / 1.3.0 / 1.7.0 / 3.7.0 |
 
-The checked-in version catalog is the executable source of these pins. AGP's built-in Kotlin and new DSL are disabled for the selected explicit Kotlin/KSP plugin wiring; these compatibility flags are recorded rather than silently treated as AGP defaults. Both variants resolve and compile with this configuration. KSP is wired in preparation for Task 2; no database exists yet.
+The checked-in version catalog is the executable source of these pins. AGP's built-in Kotlin and new DSL are disabled for the selected explicit Kotlin/KSP plugin wiring; these compatibility flags are recorded rather than silently treated as AGP defaults. Both variants resolve and compile with this configuration. KSP generates the Task 2 Room database and exports schema v1; see [DATA_MODEL](DATA_MODEL.md).
 
 Selection evidence: [AGP 9.4 requirements](https://developer.android.com/build/releases/agp-9-4-0-release-notes), [Kotlin 2.4.20](https://kotlinlang.org/docs/whatsnew2420.html), [Gradle compatibility](https://docs.gradle.org/current/userguide/compatibility.html), [KSP releases](https://github.com/google/ksp/releases), [Compose BOM mapping](https://developer.android.com/develop/ui/compose/bom/bom-mapping), [Readium docs](https://readium.org/kotlin-toolkit/), [Room releases](https://developer.android.com/jetpack/androidx/releases/room), [DataStore releases](https://developer.android.com/jetpack/androidx/releases/datastore). Published [Readium POM](https://repo.maven.apache.org/maven2/org/readium/kotlin-toolkit/readium-navigator/3.4.0/readium-navigator-3.4.0.pom) and [Nucleus metadata](https://repo.maven.apache.org/maven2/dev/nucleusframework/pdfium/158.0.8111.0/pdfium-158.0.8111.0.module) were inspected before resolution.
 
-## Verified locally
+## Task 1 verification history
 
 The approved linked worktree builds with Ubuntu OpenJDK `17.0.20.1+1-1~24.04`, compiler `17.0.20.1`. The original default Java runtime was 21; set `JAVA_HOME` explicitly to avoid mixing runtimes. Installed SDK packages: command-line tools 23.0.0, platform-tools 37.0.1, Build Tools 36.0.0, platform API 28 revision 6 and API 37.0 revision 2.
 
@@ -52,7 +53,7 @@ Local checks on the foundation: both flavors' unit tests (one test each, zero fa
 
 ## Device and CI gates
 
-This sandbox has no `/dev/kvm`, so no hardware-accelerated emulator run has occurred locally. Physical-device testing, TalkBack, 200% text, rotation/tablet layout, offline behavior and process-death restoration have **not run**. No reader/persistence feature exists yet to evaluate.
+This sandbox has no `/dev/kvm`, so no hardware-accelerated emulator run has occurred locally. Physical-device testing, TalkBack, 200% text, rotation/tablet layout, offline behavior and process-death restoration have **not run**. At this Task 1 checkpoint no reader/persistence feature existed to evaluate; see the Task 2 section below for repository evidence.
 
 The workflow pins reviewed action revisions and the Temurin JDK 17 major (patch updates are not frozen). It validates the wrapper, installs the compile SDK, runs thirteen Python guard/diagnostic-runner regression tests, and runs both unit/lint/app/test-APK variants. Separate API 28/API 37.0 x86_64 Google APIs emulator jobs run both shell-test variants. Reports and debug APKs are retained for seven days; only synthetic/empty-shell data is permitted in artifacts.
 
@@ -137,3 +138,17 @@ Retained API 37 snapshots show system-server PID `637` before tests, after tests
 The [AndroidX viewer guide](https://developer.android.com/media/grow/implement-pdf-viewer) requires API 31 plus SDK extension 13 for the full viewer. API 28 stays the app baseline and must produce an explicit unavailable capability during that candidate proof, rather than an attempted unsupported viewer launch. [AndroidX release notes](https://developer.android.com/jetpack/androidx/releases/pdf) describing backported lower-level rendering do not establish full viewer compatibility.
 
 Readium is scoped to EPUB. The Nucleus PDFium artifact includes native code and the project documents four Android ABIs; packaged ABIs, native notices/provenance and 16 KB checks are tracked in [third-party notices](../THIRD_PARTY_NOTICES.md). ELF segment alignment alone does not prove loading or rendering on a 16 KB device. Neither PDF candidate has passed selection, search, highlight geometry, memory or lifecycle gates.
+
+## Task 2: durable repository verification
+
+The same `ReaderRepositoryTest` class is compiled as Android instrumentation and included in host unit-test sources. Host runs use Robolectric 4.17 at SDK 28 with a named, file-backed Room database, not an in-memory replacement. They are useful durability/rollback evidence but are not emulator or physical-device evidence. Production uses the app-private `commonplace.db`; no destructive migration fallback or main-thread query escape hatch is enabled.
+
+Test-first evidence: after minimal schema/codec scaffolding and no-op repository methods, the focused host run executed 18 cases and failed 15 behavioral assertions (12 repository cases and 3 location-validation cases). Compilation failures encountered earlier were not counted as behavioral red. Two new CI-guard regressions failed when shell-only/missing repository results were accepted, then passed after the guard required every named durability case. The owner requested publishing the red snapshot `4a6af94` to `main` before completion; its triggered workflow is not a successful verification claim.
+
+The repository tests cover close/reopen preservation, exact Unicode text/attribution/IDs, independent bookmarks and progress, draft separation/recovery, capture+draft atomicity (including a real SQLite trigger abort after insertion), cancellation propagation, duplicate checksums and FK retention/cascades. Location tests preserve raw native JSON and reject invalid/future payloads for use without deleting the stored data. Reader-engine geometry mapping, UI save acknowledgments, lifecycle/process-death restoration, import safety and future schema migrations remain outside Task 2.
+
+Final local Task 2 verification: the strict eight-task command at the top of this document passed both flavors' unit tests, lint, app assembly and instrumentation-APK assembly. Fresh XML contains **24 passing host tests per flavor** (13 file-backed repository + 10 location + 1 library-state), **48 total**, with zero failures/errors/skips. The Python result-guard/runner suite passes **15/15**. Lint reports zero errors and seven warnings per flavor; existing tool-version/icon advisories and a new JSON-library version advisory are not runtime failures. The existing Compose shell-test API deprecation remains. New dependency metadata adds 134 artifact/checksum rows without removing any of the prior 823 rows; strict verification stays enabled.
+
+Independent Task 2 review found no Critical or Important issue. Its deferred minor is a coverage limit: the cancellation case injects `CancellationException` before INSERT and proves propagation, not mid-write coroutine cancellation rollback. The separate real-SQLite trigger abort proves post-insert transaction rollback.
+
+The owner-requested red-snapshot [run 39548893057](https://github.com/melvinvarghese/Commonplace-Reader/actions/runs/39548893057) failed as expected before Task 2 completion. A new implementation push schedules the actual device verification; until its executed XML is inspected, Task 2's API 28/API 37 repository instrumentation remains pending. No local emulator/device run is claimed.

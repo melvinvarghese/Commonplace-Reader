@@ -35,6 +35,7 @@ class ReaderRepositoryTest {
         name = "repository-${UUID.randomUUID()}.db"
         open()
         database.readerDao().insertSource(source)
+        assertTrue("Room must use a real database file", context.getDatabasePath(name).isFile)
     }
 
     private fun open() {
