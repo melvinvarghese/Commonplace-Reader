@@ -2,6 +2,12 @@
 
 **A home for the ideas you keep.** An offline-first Android reader and personal commonplace book, in development.
 
+
+<p align="center">
+  <img src="https://readme-typing-svg.demolab.com?font=JetBrains+Mono&size=14&duration=2500&pause=1000&color=8B949E&center=true&vCenter=true&width=350&lines=%3E+work+in+progress;%3E+under+active+development;%3E+coming+soon..." alt="Work in progress" />
+</p>
+
+
 ## Current state: development foundation
 
 The native Kotlin/Compose shell has Library and Settings & data destinations, an honest empty library, and light/dark colors. It contains no sample books or nonfunctional export/sync controls.
