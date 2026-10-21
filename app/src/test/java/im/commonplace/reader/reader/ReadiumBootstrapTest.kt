@@ -23,6 +23,7 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28], application = im.commonplace.reader.CommonplaceApplication::class)
 class ReadiumBootstrapTest {
+    @get:org.junit.Rule val compose = androidx.compose.ui.test.junit4.createEmptyComposeRule()
     @Test fun composeReaderAttachesSupportedNavigator() {
         val context = androidx.test.core.app.ApplicationProvider.getApplicationContext<im.commonplace.reader.CommonplaceApplication>()
         val id = UUID.randomUUID().toString()
@@ -37,6 +38,7 @@ class ReadiumBootstrapTest {
         try {
             val deadline = System.nanoTime() + 10_000_000_000L
             while (activity.supportFragmentManager.fragments.isEmpty() && System.nanoTime() < deadline) {
+                compose.waitForIdle()
                 shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(16))
                 Thread.sleep(20)
             }

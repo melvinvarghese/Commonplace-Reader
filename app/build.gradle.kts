@@ -89,6 +89,9 @@ dependencies {
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.11.0")
     testImplementation(libs.testExtJunit)
     testImplementation(libs.robolectric)
+    testImplementation(libs.composeUiTestJunit4)
+    testImplementation(libs.testRunner)
+    testImplementation(libs.espressoCore)
 
     androidTestImplementation(libs.testExtJunit)
     androidTestImplementation(libs.testRunner)
