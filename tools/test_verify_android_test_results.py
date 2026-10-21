@@ -24,10 +24,48 @@ REPOSITORY_CASES = (
     'duplicateChecksumAndDanglingForeignKeysAreRejected',
     'invalidDraftOrBlankAnnotationDoesNotOverwriteExistingWriting',
 )
-PASSING = SHELL_ONLY.replace('tests="1"', 'tests="14"').replace("</testsuite>", "".join(
+OLD_PASSING = SHELL_ONLY.replace('tests="1"', 'tests="14"').replace("</testsuite>", "".join(
     f'<testcase name="{name}" classname="im.commonplace.reader.data.ReaderRepositoryTest"/>'
     for name in REPOSITORY_CASES) + "</testsuite>")
 
+IMPORT_CASES = (
+    'cancellationAtRegistrationNeverDeletesDurablyReferencedAsset',
+    'duplicateOfMissingSourceDoesNotPretendToRepairOrDeleteWriting',
+    'unknownLengthUnseekableStreamCopiesExactBytesIntoRandomRelativeAsset',
+    'extensionAndMimeAreNotAcceptedAsEvidenceOfPdfContent',
+    'pdfHeaderWithoutParseableDocumentIsUnsupported',
+    'invalidEpubContainerIsUnsupported',
+    'missingSpineMemberIsUnsupported',
+    'revokedPermissionReturnsSafeFailureWithoutProviderPath',
+    'providerFailureHalfwayDoesNotRegisterOrLeaveAFile',
+    'remainingSpaceIsCheckedDuringCopyNotJustAtStart',
+    'enospcFromStreamBoundaryLeavesNoPartial',
+    'cancellationPropagatesAndRemovesStaging',
+    'cancelledCoroutineMidCopyLeavesNoSource',
+    'databaseFailureAfterPlacementRemovesOnlyNewAssetAndKeepsWriting',
+    'concurrentDuplicatesHaveOneCompleteAssetAndOneSource',
+    'startupRemovesAbandonedStagingAndOrphanButRetainsNotesAndUnownedFiles',
+    'missingAssetBecomesUnavailableWithoutLosingSourceOrWriting',
+    'unsafeZipPathsAndDuplicateMembersAreRejected',
+    'oversizedZipMemberIsRejectedBeforeParsing',
+    'xmlDoctypeAndEntityExpansionAreRejectedWithoutFetching',
+    'successfulCopyCanBeReopenedAfterOriginalAccessIsRevoked',
+    'inputBeyond256MiBStopsWithoutRegisteringOrBufferingWholeFile',
+    'tooManyZipMembersAreRejected',
+    'cumulativeZipExpansionAbove512MiBIsRejected',
+    'duplicateZipPathsAndForgedCrcAreRejected',
+)
+PROVIDER_CASES = (
+    'spoofedMimeUnknownLengthPipeImportsEpubAndSurvivesProviderRevocationOffline',
+    'realPartialProviderPipeLeavesNoUsableSource',
+    'sharedPdfCorpusUsesRealPlatformParserAndRejectsEncryptedAndMalformed',
+    'sharedEpubCorpusImportsWithoutRenderingOrFetchingRemoteResources',
+)
+PASSING = OLD_PASSING.replace('</testsuite>', ''.join(
+    f'<testcase name="{name}" classname="im.commonplace.reader.imports.DocumentImporterTest"/>'
+    for name in IMPORT_CASES) + ''.join(
+    f'<testcase name="{name}" classname="im.commonplace.reader.fixtures.ProviderImportTest"/>'
+    for name in PROVIDER_CASES) + '</testsuite>')
 
 class InstrumentationResultGuardTest(unittest.TestCase):
     def run_guard(self, reports):
@@ -68,6 +106,17 @@ class InstrumentationResultGuardTest(unittest.TestCase):
 
     def test_rejects_one_missing_repository_case(self):
         report = PASSING.replace(REPOSITORY_CASES[0], "notTheDurabilityContract")
+        self.assertNotEqual(self.run_guard(dict.fromkeys(("androidx", "composepdf"), report)).returncode, 0)
+
+    def test_rejects_previous_milestone_without_importer_cases(self):
+        self.assertNotEqual(self.run_guard(dict.fromkeys(("androidx", "composepdf"), OLD_PASSING)).returncode, 0)
+
+    def test_rejects_one_missing_import_case(self):
+        report = PASSING.replace(IMPORT_CASES[0], "notTheImportContract")
+        self.assertNotEqual(self.run_guard(dict.fromkeys(("androidx", "composepdf"), report)).returncode, 0)
+
+    def test_rejects_one_missing_provider_case(self):
+        report = PASSING.replace(PROVIDER_CASES[0], "notTheRealProviderContract")
         self.assertNotEqual(self.run_guard(dict.fromkeys(("androidx", "composepdf"), report)).returncode, 0)
 
     def test_rejects_malformed_xml(self):

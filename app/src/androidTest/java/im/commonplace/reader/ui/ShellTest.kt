@@ -6,6 +6,7 @@ import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.test.core.app.ActivityScenario
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import im.commonplace.reader.MainActivity
@@ -24,7 +25,11 @@ class ShellTest {
         val intent = Intent(InstrumentationRegistry.getInstrumentation().targetContext, MainActivity::class.java)
         ActivityScenario.launch<MainActivity>(intent).use {
             composeRule.onNodeWithText("Library").assertIsDisplayed()
+            composeRule.waitUntil(10_000) {
+                composeRule.onAllNodesWithText("No books yet").fetchSemanticsNodes().isNotEmpty()
+            }
             composeRule.onNodeWithText("No books yet").assertIsDisplayed()
+            composeRule.onNodeWithText("Import PDF or EPUB").assertIsDisplayed()
             composeRule.onNodeWithText("Settings & data").performClick()
             composeRule.onNodeWithText("Offline and private").assertIsDisplayed()
         }

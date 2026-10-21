@@ -9,6 +9,10 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface ReaderDao {
     @Insert suspend fun insertSource(source: SourceEntity)
+    @Query("SELECT * FROM sources WHERE checksum = :checksum") suspend fun sourceByChecksum(checksum: String): SourceEntity?
+    @Query("SELECT * FROM sources") suspend fun sources(): List<SourceEntity>
+    @Query("UPDATE sources SET availability = :availability, modifiedAt = :modifiedAt WHERE id = :id")
+    suspend fun setAvailability(id: String, availability: SourceAvailability, modifiedAt: Long)
     @Query("SELECT * FROM sources ORDER BY createdAt DESC, id") fun observeSources(): Flow<List<SourceEntity>>
     @Query("SELECT * FROM sources WHERE id = :id") suspend fun source(id: String): SourceEntity?
     @Query("SELECT * FROM entries WHERE sourceId = :sourceId ORDER BY createdAt, id") fun observeEntries(sourceId: String): Flow<List<EntryEntity>>

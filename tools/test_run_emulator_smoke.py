@@ -11,11 +11,12 @@ from test_verify_android_test_results import PASSING
 
 
 class EmulatorSmokeTest(unittest.TestCase):
-    def run_smoke(self, gradle_status=0, reports=True, adb_status=0):
+    def run_smoke(self, gradle_status=0, reports=True, adb_status=0, recovery_status=0):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             (root / 'tools').mkdir()
             shutil.copy(TOOLS / 'verify_android_test_results.py', root / 'tools')
+            (root / 'tools/run_import_recovery.py').write_text('import sys; sys.exit(' + str(recovery_status) + ')\n')
             # Real subprocess boundaries; no emulator is available on this host.
             adb = root / 'adb'
             adb.write_text('#!/bin/sh\nprintf "adb %s\\n" "$*"\nexit ' + str(adb_status) + '\n')
@@ -54,6 +55,10 @@ class EmulatorSmokeTest(unittest.TestCase):
         result, _ = self.run_smoke(reports=False)
         self.assertNotEqual(result.returncode, 0)
         self.assertIn('no instrumentation XML reports', result.stderr)
+
+    def test_failed_process_kill_recovery_cannot_pass_with_green_gradle_and_xml(self):
+        result, _ = self.run_smoke(recovery_status=8)
+        self.assertEqual(result.returncode, 8, result.stdout + result.stderr)
 
     def test_diagnostic_failure_cannot_mask_successful_test_gate(self):
         result, artifacts = self.run_smoke(adb_status=9)

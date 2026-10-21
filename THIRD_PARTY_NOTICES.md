@@ -48,3 +48,7 @@ The audit compared artifact hashes, archive version/target metadata, ABI directo
 ## Notices and redistribution
 
 When redistributing third-party binaries, retain the applicable copyright/license notices above and the full accompanying materials in `third_party/licenses/`. In particular, preserve the Readium BSD-3-Clause terms, MIT notices for the PDF wrapper/native package, and **all** PDFium component license files copied from the supplied native package. The project's Apache-2.0 license does not replace or relicense those third-party components.
+
+## Synthetic test fixtures
+
+Task 3's original document text, generated scan graphics and EPUB packages are Apache-2.0 project material. The committed fixture generator uses ReportLab 5.0.1 (BSD), Pillow 12.3.0 (MIT-CMU) and pypdf 6.18.1 (BSD-3-Clause); these Python tools are not Android runtime dependencies. The bundled `tools/fixtures/assets/DejaVuSans.ttf` retains the full Bitstream Vera/DejaVu redistribution notice at [`tools/fixtures/assets/DejaVu-LICENSE.txt`](tools/fixtures/assets/DejaVu-LICENSE.txt). Its hash and generation recipes are in the [fixture manifest](app/src/androidTest/assets/fixtures/manifest.json). No third-party books or external scan images are included. Reference geometry is authored test data, not evidence of a candidate engine's selection accuracy.

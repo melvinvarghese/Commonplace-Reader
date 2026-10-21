@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Room
 import im.commonplace.reader.data.CommonplaceDatabase
 import im.commonplace.reader.data.ReaderRepository
+import im.commonplace.reader.imports.DocumentImporter
 
 class AppContainer(context: Context) {
     private val applicationContext = context.applicationContext
@@ -14,4 +15,7 @@ class AppContainer(context: Context) {
             .build()
     }
     val readerRepository: ReaderRepository by lazy { ReaderRepository(database) }
+    val documentImporter: DocumentImporter by lazy {
+        DocumentImporter(applicationContext.contentResolver, applicationContext.filesDir, readerRepository)
+    }
 }

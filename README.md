@@ -10,7 +10,9 @@ Task 2 adds a Room-backed repository for sources, Unicode captures/reflections, 
 
 The earlier [shell validation](https://github.com/melvinvarghese/Commonplace-Reader/actions/runs/39535925337) at `ef778c6` passed genuine launch/navigation instrumentation for both flavors on API 28 and API 37.0 (four executed tests). Task 2 adds file-backed repository instrumentation and host tests; its exact verification outcomes are recorded in [development notes](docs/DEVELOPMENT.md). A successful shell launch or durable record test is not proof that a reader works.
 
-Not implemented yet: document import, EPUB/PDF reading, capture/editor UI, Commonplace and Search destinations, Markdown export, backup/restore, or Obsidian integration. This is not a beta or a release-ready APK.
+Task 3 adds a bounded app-private PDF/EPUB import path, checksum duplicate handling, missing-asset reconciliation, and original shared fixtures. Both flavors pass 50 host tests each, lint (zero errors; warnings retained) and app/test-APK builds; 25 Python CI/recovery regressions and 5 fixture checks pass. API 28/API 37 device import/process-kill verification is pending, so no verified device-import/reader compatibility claim is made yet. See [TESTING](docs/TESTING.md) for guardrails, reproducible fixture generation and limits.
+
+Not implemented yet: EPUB/PDF reading, capture/editor UI, Commonplace and Search destinations, Markdown export, backup/restore, or Obsidian integration. This is not a beta or a release-ready APK.
 
 ## Build
 
@@ -30,7 +32,7 @@ With an emulator/device connected:
 ./gradlew :app:connectedAndroidxDebugAndroidTest :app:connectedComposepdfDebugAndroidTest
 ```
 
-[CI](https://github.com/melvinvarghese/Commonplace-Reader/actions) builds both flavors and runs shell and file-backed repository instrumentation on API 28 and API 37. Its result guard requires each named durability case in both flavors. Workflow creation does not mean a run has passed. See [DEVELOPMENT](docs/DEVELOPMENT.md) for exact dependencies, prerequisites, evidence and limitations.
+[CI](https://github.com/melvinvarghese/Commonplace-Reader/actions) builds both flavors and runs shell and file-backed repository instrumentation on API 28 and API 37. Its result guard requires each named durability/import/provider case in both flavors. Workflow creation does not mean a run has passed. See [DEVELOPMENT](docs/DEVELOPMENT.md) for exact dependencies, prerequisites, evidence and limitations.
 
 ## Reader comparison
 

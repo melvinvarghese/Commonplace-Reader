@@ -71,10 +71,14 @@ def main():
         capture(REPORTS / 'probes', f'{flavor}-launch',
                 ['adb', 'shell', 'am', 'start', '-W', '-n', component], timeout=45)
     snapshot('after-probes')
+    recovery_status = 0
+    if result.returncode == 0:
+        print('Verifying real process-kill import recovery for both variants.', flush=True)
+        recovery_status = subprocess.run([sys.executable, 'tools/run_import_recovery.py']).returncode
     guard = subprocess.run([sys.executable, 'tools/verify_android_test_results.py',
                             'app/build/outputs/androidTest-results/connected/debug/flavors'])
-    print(f'Gate status: Gradle={result.returncode}, executed-test guard={guard.returncode}', flush=True)
-    return result.returncode or guard.returncode
+    print(f'Gate status: Gradle={result.returncode}, import-recovery={recovery_status}, executed-test guard={guard.returncode}', flush=True)
+    return result.returncode or recovery_status or guard.returncode
 
 
 if __name__ == '__main__':

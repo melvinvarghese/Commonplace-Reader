@@ -33,6 +33,12 @@ jobs:
       - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4; includes wrapper validation
       - name: Install compile SDK and Build Tools
         run: sdkmanager 'platforms;android-37.0' 'build-tools;36.0.0'
+      - name: Regenerate and verify original fixture corpus
+        run: |
+          python3 -m pip install -r tools/fixtures/requirements.txt
+          python3 -m unittest tools/fixtures/test_generate_fixtures.py -v
+          python3 tools/fixtures/generate_fixtures.py --output build/fixture-regeneration --large
+          python3 -c 'from pathlib import Path; source=Path("app/src/androidTest/assets/fixtures"); generated=Path("build/fixture-regeneration"); files=[p for p in source.iterdir() if p.suffix in (".pdf", ".epub", ".json")]; assert files; assert all(p.read_bytes()==(generated/p.name).read_bytes() for p in files), "committed fixture bytes differ from pinned generator"'
       - name: CI result-guard regression tests
         run: python3 -m unittest discover -s tools -p 'test_*.py' -v
       - name: Unit tests, lint, apps and instrumentation APKs

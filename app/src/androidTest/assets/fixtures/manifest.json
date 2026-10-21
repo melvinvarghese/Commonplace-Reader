@@ -1,0 +1,387 @@
+{
+  "fixtures": [
+    {
+      "bytes": 22637,
+      "expected": {
+        "exactText": [
+          "A quiet synthetic page for local reader testing."
+        ],
+        "pageLabels": [
+          null
+        ],
+        "pages": 1,
+        "referenceSelections": [
+          {
+            "coordinateSpace": "unrotated-pdf-points",
+            "geometryNote": "Generator-authored conservative font-box estimate; not measured from a reader selection.",
+            "pageBox": [
+              0,
+              0,
+              612,
+              792
+            ],
+            "pageIndex": 0,
+            "pageLabel": null,
+            "quads": [
+              [
+                72,
+                698,
+                352.295,
+                698,
+                352.295,
+                712,
+                72,
+                712
+              ]
+            ],
+            "rotationDegrees": 0,
+            "text": "A quiet synthetic page for local reader testing."
+          }
+        ]
+      },
+      "file": "ordinary-text.pdf",
+      "format": "PDF",
+      "id": "pdf-ordinary",
+      "license": "Original synthetic content; no external document/image assets.",
+      "pages": 1,
+      "sha256": "e6beef714344e012b0a3acb33e375fa1e204065d130869f87296930a7e67ffb0"
+    },
+    {
+      "bytes": 23050,
+      "expected": {
+        "exactText": [
+          "Repeated passage: amber lantern.",
+          "Repeated passage: amber lantern."
+        ],
+        "pageLabels": [
+          null,
+          null
+        ],
+        "pages": 2,
+        "referenceSelections": [
+          {
+            "coordinateSpace": "unrotated-pdf-points",
+            "geometryNote": "Generator-authored conservative font-box estimate; not measured from a reader selection.",
+            "pageBox": [
+              0,
+              0,
+              612,
+              792
+            ],
+            "pageIndex": 0,
+            "pageLabel": null,
+            "quads": [
+              [
+                72,
+                698,
+                280.805,
+                698,
+                280.805,
+                712,
+                72,
+                712
+              ]
+            ],
+            "rotationDegrees": 0,
+            "text": "Repeated passage: amber lantern."
+          },
+          {
+            "coordinateSpace": "unrotated-pdf-points",
+            "geometryNote": "Generator-authored conservative font-box estimate; not measured from a reader selection.",
+            "pageBox": [
+              0,
+              0,
+              612,
+              792
+            ],
+            "pageIndex": 1,
+            "pageLabel": null,
+            "quads": [
+              [
+                72,
+                698,
+                280.805,
+                698,
+                280.805,
+                712,
+                72,
+                712
+              ]
+            ],
+            "rotationDegrees": 0,
+            "text": "Repeated passage: amber lantern."
+          }
+        ]
+      },
+      "file": "repeated-two-page.pdf",
+      "format": "PDF",
+      "id": "pdf-repeated",
+      "license": "Original synthetic content; no external document/image assets.",
+      "pages": 2,
+      "sha256": "e32c7588f828c0b9c54700534e48ec81bf76c62d4385e2afaddbb926db9d7e57"
+    },
+    {
+      "bytes": 22284,
+      "expected": {
+        "exactText": [
+          "Crop and rotation reference phrase."
+        ],
+        "pageBox": [
+          36,
+          36,
+          576,
+          756
+        ],
+        "pageLabels": [
+          null
+        ],
+        "pages": 1,
+        "referenceSelections": [
+          {
+            "coordinateSpace": "unrotated-pdf-points",
+            "geometryNote": "Source-space estimate remains unrotated; crop/rotation metadata is explicit. Not reader-observed.",
+            "pageBox": [
+              36,
+              36,
+              576,
+              756
+            ],
+            "pageIndex": 0,
+            "pageLabel": null,
+            "quads": [
+              [
+                72,
+                698,
+                288.211,
+                698,
+                288.211,
+                712,
+                72,
+                712
+              ]
+            ],
+            "rotationDegrees": 90,
+            "text": "Crop and rotation reference phrase."
+          }
+        ],
+        "rotationDegrees": 90
+      },
+      "file": "rotated-cropped.pdf",
+      "format": "PDF",
+      "id": "pdf-rotated-cropped",
+      "license": "Original synthetic content; no external document/image assets.",
+      "pages": 1,
+      "sha256": "5ed4a3ae3fb62ee5fd737ac7ec70f45d905be90eadbdc57186fad6e44284227a"
+    },
+    {
+      "bytes": 23989,
+      "expected": {
+        "exactText": [
+          "English café — Ελληνικά — Русский текст."
+        ],
+        "pageLabels": [
+          null
+        ],
+        "pages": 1,
+        "referenceSelections": [
+          {
+            "coordinateSpace": "unrotated-pdf-points",
+            "geometryNote": "Generator-authored conservative font-box estimate; not measured from a reader selection.",
+            "pageBox": [
+              0,
+              0,
+              612,
+              792
+            ],
+            "pageIndex": 0,
+            "pageLabel": null,
+            "quads": [
+              [
+                72,
+                698,
+                332.314,
+                698,
+                332.314,
+                712,
+                72,
+                712
+              ]
+            ],
+            "rotationDegrees": 0,
+            "text": "English café — Ελληνικά — Русский текст."
+          }
+        ]
+      },
+      "file": "multilingual.pdf",
+      "format": "PDF",
+      "id": "pdf-multilingual",
+      "license": "Original generated text; embedded DejaVu Sans font, see tools/fixtures/assets/DejaVu-LICENSE.txt.",
+      "pages": 1,
+      "sha256": "d95d628302ed938a5d21a93cea1d88729de0b1e948ad89d16d3187a6ae886042"
+    },
+    {
+      "bytes": 12255,
+      "expected": {
+        "content": "single raster image; intentionally no OCR/text layer",
+        "exactText": [],
+        "pageLabels": [
+          null
+        ],
+        "pages": 1,
+        "referenceSelections": []
+      },
+      "file": "image-only-scan.pdf",
+      "format": "PDF",
+      "id": "pdf-image-only",
+      "license": "Original synthetic content; no external document/image assets.",
+      "pages": 1,
+      "sha256": "fda4b0960dbd2b21446425a9f5269e6bffd6bb26e5b23d31abd9bc084418392b"
+    },
+    {
+      "bytes": 22752,
+      "expected": {
+        "exactText": [
+          "Password fixture content."
+        ],
+        "pageLabels": [
+          null
+        ],
+        "pages": 1,
+        "password": "fixture-password"
+      },
+      "file": "encrypted.pdf",
+      "format": "PDF",
+      "id": "pdf-encrypted",
+      "license": "Original synthetic content; no external document/image assets.",
+      "pages": 1,
+      "sha256": "ed0b730bed0fa7eca1c409b9dbe4390a443ff914370ea982fc320ca26fabc1a3"
+    },
+    {
+      "bytes": 179,
+      "expected": {
+        "expectedOutcome": "parser rejection or explicit malformed-document error",
+        "pages": null,
+        "reason": "intentionally truncated before a valid xref/trailer"
+      },
+      "file": "malformed.pdf",
+      "format": "PDF",
+      "id": "pdf-malformed",
+      "license": "Original synthetic content; no external document/image assets.",
+      "pages": null,
+      "sha256": "40aa2d06e39d3599393d01db2fd7b9ee428d3e2f15b06f1d7b765b91929e200e"
+    },
+    {
+      "bytes": 1185,
+      "expected": {
+        "exactText": [
+          "A reflowable original chapter preserves naïve café and Greek: Καλημέρα."
+        ],
+        "layout": "reflowable",
+        "referenceSelections": [
+          {
+            "cfi": null,
+            "note": "No reader-generated CFI; source text only.",
+            "text": "A reflowable original chapter preserves naïve café and Greek: Καλημέρα."
+          }
+        ]
+      },
+      "file": "reflowable.epub",
+      "format": "EPUB",
+      "id": "epub-reflowable",
+      "license": "Original synthetic content; no external document/image assets.",
+      "pages": null,
+      "sha256": "025bdddb48dc3513764e5ba3688cfbd978e940658bf8f563ffd19b9d09b8dd12"
+    },
+    {
+      "bytes": 1182,
+      "expected": {
+        "exactText": [
+          "Fixed-page original layout sample."
+        ],
+        "layout": "fixed-layout",
+        "referenceSelections": []
+      },
+      "file": "fixed-layout.epub",
+      "format": "EPUB",
+      "id": "epub-fixed",
+      "license": "Original synthetic content; no external document/image assets.",
+      "pages": null,
+      "sha256": "dc27da991c93e92605ec1c9e61f888917b9ec381fa728aaf87ace336f915567f"
+    },
+    {
+      "bytes": 1260,
+      "expected": {
+        "exactText": [
+          "Hostile remote-resource probe; the referenced URL is inert unless a reader fetches it."
+        ],
+        "expectedOutcome": "reader must not fetch remote resource by default",
+        "layout": "reflowable",
+        "remoteResource": "http://127.0.0.1:9/probe.png"
+      },
+      "file": "hostile-remote.epub",
+      "format": "EPUB",
+      "id": "epub-hostile-remote",
+      "license": "Original synthetic content; no external document/image assets.",
+      "pages": null,
+      "sha256": "bb4b82ada2f6e4799800eaf833f2aa8c89b3e89f574cd4fe538ceaca052c444c"
+    },
+    {
+      "bytes": 104857600,
+      "expected": {
+        "exactBytes": 104857600,
+        "padding": "ASCII whitespace after the PDF EOF marker; parser-defined validity only",
+        "pageLabels": [
+          null
+        ],
+        "pages": 1
+      },
+      "file": "large-100mib.local.pdf",
+      "format": "PDF",
+      "id": "pdf-large-100mib",
+      "license": "Original synthetic content; no external document/image assets.",
+      "pages": 1,
+      "sha256": "73c4e34e97311ce559c8755ee9c0e42f27f7fd6bc733db06a61a56fae0f69c6e"
+    }
+  ],
+  "font": {
+    "file": "../../../../../tools/fixtures/assets/DejaVuSans.ttf",
+    "license": "Bitstream Vera / DejaVu; complete text in tools/fixtures/assets/DejaVu-LICENSE.txt",
+    "sha256": "ae7b7855e115a5966d8b1b3f80f254ccc117ec86f9965e202ee2940453837280",
+    "source": "installed system DejaVu Sans copied locally; no web font asset downloaded"
+  },
+  "generator": "tools/fixtures/generate_fixtures.py",
+  "generatorDependencies": [
+    {
+      "license": "BSD License",
+      "name": "reportlab",
+      "source": "https://pypi.org/project/reportlab/5.0.1/",
+      "version": "5.0.1"
+    },
+    {
+      "license": "MIT-CMU",
+      "name": "Pillow",
+      "source": "https://pypi.org/project/Pillow/12.3.0/",
+      "version": "12.3.0"
+    },
+    {
+      "license": "BSD-3-Clause",
+      "name": "pypdf",
+      "source": "https://pypi.org/project/pypdf/6.18.1/",
+      "version": "6.18.1"
+    }
+  ],
+  "limitations": [
+    "Expected PDF quads are manually authored conservative font-box approximations, not output from AndroidX or another reader; they are references for geometry plumbing only.",
+    "Reference PDF strings are selected as whole single-line runs. Exact shaping, glyph-cluster boundaries, ligatures, bidi behavior, and platform text extraction are engine/device dependent and intentionally not asserted.",
+    "Multilingual text covers Latin accents, Greek and Cyrillic only; this is not a language coverage benchmark.",
+    "Page labels are null because no genuine printed labels are authored; pageIndex is zero-based physical order.",
+    "The image-only fixture has no OCR text and cannot establish a reader's scan diagnosis; absence of text alone is not proof of scanning.",
+    "EPUB reference CFI is null until a reader produces a native locator; text expectations are package contents, not proof of selection behavior.",
+    "The hostile EPUB has a loopback URL at port 9; no server is started and this fixture itself does not test network policy.",
+    "Encrypted fixture password is public test data: fixture-password. No password is confidential or persisted.",
+    "Malformed fixture is intentionally truncated; parser behavior is implementation-specific.",
+    "The large fixture is locally generated only when --large is passed and must not be committed. Whitespace padding after EOF preserves exact size but parser tolerance is not guaranteed."
+  ],
+  "recipe": "Python 3.11+; reportlab==5.0.1; Pillow==12.3.0; pypdf==6.18.1; deterministic original content; ZIP timestamps fixed to 2000-01-01.",
+  "schemaVersion": 1
+}

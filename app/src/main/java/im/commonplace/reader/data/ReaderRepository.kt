@@ -16,6 +16,21 @@ class ReaderRepository(
 ) {
     private val dao = database.readerDao()
 
+    suspend fun registerImportedSource(source: SourceEntity): Unit = withContext(io) {
+        require(UUID.fromString(source.id).toString() == source.id)
+        require(source.title.isNotBlank())
+        require(source.checksum.matches(Regex("[0-9a-f]{64}")))
+        require(source.assetPath.matches(Regex("imports/assets/[0-9a-f-]{36}\\.(pdf|epub)")))
+        require(source.availability == SourceAvailability.AVAILABLE)
+        dao.insertSource(source)
+    }
+
+    suspend fun sourceByChecksum(checksum: String): SourceEntity? = withContext(io) { dao.sourceByChecksum(checksum) }
+    suspend fun sources(): List<SourceEntity> = withContext(io) { dao.sources() }
+    suspend fun markMissing(sourceId: String): Unit = withContext(io) {
+        dao.setAvailability(sourceId, SourceAvailability.MISSING, clock())
+    }
+
     fun observeSources() = dao.observeSources()
     fun observeEntries(sourceId: String) = dao.observeEntries(sourceId)
 

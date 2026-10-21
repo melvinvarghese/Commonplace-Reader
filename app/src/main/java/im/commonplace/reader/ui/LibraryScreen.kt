@@ -9,9 +9,20 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.material3.Button
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.AlertDialog
+import androidx.compose.ui.platform.LocalContext
+import im.commonplace.reader.CommonplaceApplication
+import im.commonplace.reader.data.SourceAvailability
+import im.commonplace.reader.imports.ImportResult
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -32,7 +43,14 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 
 @Composable
 fun LibraryScreen(contentPadding: PaddingValues) {
-    val viewModel = viewModel<LibraryViewModel>()
+    val container = (LocalContext.current.applicationContext as CommonplaceApplication).container
+    val viewModel = viewModel { LibraryViewModel(container.readerRepository, container.documentImporter) }
+    val importing by viewModel.importing.collectAsStateWithLifecycle()
+    val result by viewModel.importResult.collectAsStateWithLifecycle()
+    val selected by viewModel.selectedSource.collectAsStateWithLifecycle()
+    val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) viewModel.importDocument(uri)
+    }
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
     LazyColumn(
@@ -72,6 +90,24 @@ fun LibraryScreen(contentPadding: PaddingValues) {
         }
 
         item {
+            Button(
+                onClick = { picker.launch(arrayOf("application/pdf", "application/epub+zip")) },
+                enabled = !importing && state !is LibraryUiState.Loading && state !is LibraryUiState.Error,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
+            ) { Text(if (importing) "Importing…" else "Import PDF or EPUB") }
+        }
+        val books = state as? LibraryUiState.Books
+        if (books != null) {
+            items(books.sources, key = { it.id }) { source ->
+                Surface(onClick = { viewModel.openExisting(source.id) }, modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.large, tonalElevation = 1.dp) {
+                    Column(Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(source.title, style = MaterialTheme.typography.titleLarge)
+                        Text(if (source.availability == SourceAvailability.AVAILABLE) "${source.format.name} · Stored on this device" else "Document missing · Writing retained")
+                    }
+                }
+            }
+        } else item {
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -82,11 +118,42 @@ fun LibraryScreen(contentPadding: PaddingValues) {
             ) {
                 when (val current = state) {
                     LibraryUiState.Empty -> EmptyLibraryState()
+                    is LibraryUiState.Books -> Unit
                     LibraryUiState.Loading -> LoadingLibraryState()
                     is LibraryUiState.Error -> ErrorLibraryState(current.message)
                 }
             }
         }
+    }
+    result?.let { outcome ->
+        AlertDialog(
+            onDismissRequest = viewModel::dismissResult,
+            title = { Text(when (outcome) {
+                is ImportResult.Imported -> "Document imported"
+                is ImportResult.Duplicate -> "Already in your library"
+                is ImportResult.Unsupported -> "Unsupported document"
+                is ImportResult.Failed -> "Import failed"
+            }) },
+            text = { Text(when (outcome) {
+                is ImportResult.Imported -> "A complete copy is stored on this device. The original was not changed. Reader proof follows next."
+                is ImportResult.Duplicate -> "This exact document is already in your library."
+                is ImportResult.Unsupported -> outcome.reason
+                is ImportResult.Failed -> outcome.reason
+            }) },
+            confirmButton = {
+                if (outcome is ImportResult.Duplicate) TextButton(onClick = { viewModel.openExisting(outcome.sourceId) }) { Text("Open existing book") }
+                else TextButton(onClick = viewModel::dismissResult) { Text("Done") }
+            },
+            dismissButton = { if (outcome is ImportResult.Duplicate) TextButton(onClick = viewModel::dismissResult) { Text("Cancel") } },
+        )
+    }
+    selected?.let { source ->
+        AlertDialog(onDismissRequest = viewModel::closeSource,
+            title = { Text(source.title) },
+            text = { Text(if (source.availability == SourceAvailability.MISSING)
+                "The app-owned document is missing. Source metadata and writing are retained. Reattachment is not implemented yet."
+                else "${source.format.name} is stored on this device. Reading opens in the upcoming reader proof; it is not available in this build.") },
+            confirmButton = { TextButton(onClick = viewModel::closeSource) { Text("Close") } })
     }
 }
 
@@ -115,7 +182,7 @@ private fun EmptyLibraryState() {
         )
         Spacer(Modifier.height(18.dp))
         Text(
-            text = "IMPORT ARRIVES NEXT",
+            text = "CHOOSE A PDF OR EPUB ABOVE",
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.secondary,
             letterSpacing = 1.1.sp,

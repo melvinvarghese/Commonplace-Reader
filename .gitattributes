@@ -1,0 +1,4 @@
+# Generated legal test documents/fonts must remain byte-identical across checkouts.
+*.pdf binary
+*.epub binary
+*.ttf binary

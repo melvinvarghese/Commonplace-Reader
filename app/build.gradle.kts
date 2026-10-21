@@ -44,6 +44,7 @@ android {
 
     testOptions { unitTests.isIncludeAndroidResources = true }
     sourceSets.getByName("test").java.srcDir("src/androidTest/java/im/commonplace/reader/data")
+    sourceSets.getByName("test").java.srcDir("src/androidTest/java/im/commonplace/reader/imports")
 
     buildFeatures {
         compose = true
