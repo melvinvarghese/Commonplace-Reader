@@ -56,7 +56,7 @@ This sandbox has no `/dev/kvm`, so no hardware-accelerated emulator run has occu
 
 The workflow pins reviewed action revisions and the Temurin JDK 17 major (patch updates are not frozen). It validates the wrapper, installs the compile SDK, runs ten Python guard/diagnostic-runner regression tests, and runs both unit/lint/app/test-APK variants. Separate API 28/API 37.0 x86_64 Google APIs emulator jobs run both shell-test variants. Reports and debug APKs are retained for seven days; only synthetic/empty-shell data is permitted in artifacts.
 
-**Verified:** local unit tests (one per flavor), both lint/build variants, and API 28 launch/navigation for both flavors. The latest [run 39466877428](https://github.com/melvinvarghese/Commonplace-Reader/actions/runs/39466877428), at `534730d`, passes its checks and guarded API 28 jobs. Downloaded XML from the preceding diagnostic run also confirms both API 28 shell tests executed and passed. The overall run fails. **API 37 runtime is blocked; Task 1 is not fully complete and Task 2 has not started.**
+**Verified:** local unit tests (one per flavor), both lint/build variants, and earlier API 28 launch/navigation for both flavors. [Run 39466877428](https://github.com/melvinvarghese/Commonplace-Reader/actions/runs/39466877428), at `534730d`, passes its checks and guarded API 28 jobs. Downloaded XML from the preceding diagnostic run also confirms both API 28 shell tests executed and passed. The later 4 GB experiment below does not add runtime proof. **API 37 runtime is blocked/unverified; Task 1 is not fully complete and Task 2 has not started.**
 
 The current-API investigation established these separate failures:
 
@@ -80,6 +80,16 @@ Earlier setup issues are fixed: explicitly selecting `platform-tools` avoids the
 ```
 
 [Android Emulator Runner](https://github.com/ReactiveCircus/android-emulator-runner) documents the KVM-enabled Ubuntu setup used here. A passing shell smoke test establishes launch/navigation only, not reader support.
+
+### Approved 4 GB experiment: inconclusive app-runtime result
+
+[Run 39529429623](https://github.com/melvinvarghese/Commonplace-Reader/actions/runs/39529429623), experiment commit `d44b2449ccef28c3871eda47ad1e883c4dfe3408`, requested 4096M RAM only for API 37. API 28 retained 2048M; the generic device, requested 4096M userdata, GPU baseline, image selections, toolchain, dependencies, app tests and result guard were unchanged. No second run or further configuration workaround was started.
+
+The checks job passed both flavors' strict unit/lint/app/test-APK tasks and all ten Python regression tests. Both emulator jobs failed before app instrumentation: the added multiline `if` memory-capture block was passed to `/usr/bin/sh` one line at a time by the emulator action, producing `Syntax error: end of file unexpected (expecting "fi")`. This is an experiment-wrapper defect, not an app-test failure. Neither flavor executed instrumentation on either API in this run; the live diagnostic runner and genuine-test guard were never reached (their code was not weakened).
+
+Retained API 37 AVD configuration confirms `hw.ramSize=4096M`. Kernel boot output reports `Memory: 3731456K/4193744K available`, confirming increased guest boot memory rather than merely the requested setting. The same boot log shows SurfaceFlinger PID 496 receiving SIGABRT and restarting as PID 1612 before the wrapper error. It does **not** identify the earlier `hasReadColorBufferDma` assertion, establish its cause, or prove that 4 GB resolves it. Host available memory and live service/PID/logcat snapshots were not captured: execution stopped before those probes, and post-shutdown collection found an offline emulator and no usable logcat. The memory hypothesis therefore remains unresolved; API 37 stays blocked/unverified.
+
+Downloaded reports/APKs were reviewed; unit XML contains one passing test per flavor, but no instrumentation XML exists for this run. Those unit XML timestamps predate this run, consistent with restored Gradle task outputs; the fresh evidence is successful CI execution/cache validation, not a newly executed JVM test claim. The failed experiment's entire workflow diff is restored to the pre-experiment baseline, with this evidence committed using `[skip ci]` to avoid an unauthorized second run. Task 2 remains paused. Any corrected experiment requires a newly approved run; no image or toolchain pin changes were made.
 
 ## PDF comparison limits
 

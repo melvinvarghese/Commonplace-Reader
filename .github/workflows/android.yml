@@ -87,17 +87,12 @@ jobs:
           api-level: ${{ matrix.api }}
           arch: x86_64
           target: google_apis
-          ram-size: ${{ matrix.api == '37.0' && '4096M' || '2048M' }}
+          ram-size: 2048M
           disk-size: 4096M
           disable-animations: true
           pre-emulator-launch-script: adb start-server
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -show-kernel
           script: |
-            if [ "${{ matrix.api }}" = "37.0" ]; then
-              mkdir -p build/reports/emulator
-              free -k > build/reports/emulator/host-memory-after-boot.txt
-              timeout 20 adb shell cat /proc/meminfo > build/reports/emulator/guest-memory-after-boot.txt 2>&1 || true
-            fi
             python3 tools/run_emulator_smoke.py
       - name: Collect emulator failure diagnostics
         if: failure()
