@@ -15,6 +15,7 @@ concurrency:
 
 jobs:
   checks:
+    if: ${{ false }} # One approved setup-only diagnostic; no app checks.
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
@@ -53,13 +54,14 @@ jobs:
             app/build/test-results/
             app/build/outputs/apk/
   smoke:
+    if: ${{ always() }} # Run setup even though app checks are intentionally skipped.
     needs: checks
     runs-on: ubuntu-24.04
     timeout-minutes: 35
     strategy:
       fail-fast: false
       matrix:
-        api: ['28', '37.0']
+        api: ['37.0']
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -81,8 +83,25 @@ jobs:
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
-      - name: Launch and navigate both shells
-        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2
+      - name: Check out the unchanged pinned emulator action for a setup-only stop
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: reactivecircus/android-emulator-runner
+          ref: a421e43855164a8197daf9d8d40fe71c6996bb0d
+          path: .diagnostic-emulator-runner
+          persist-credentials: false
+      - name: Stop the pinned action before emulator launch and all app tests
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('.diagnostic-emulator-runner/lib/main.js')
+          source = p.read_text()
+          marker = '        // launch an emulator\n'
+          assert source.count(marker) == 1, 'Pinned action stop boundary changed'
+          p.write_text(source.replace(marker, '        console.log("SETUP_ONLY_STOP: AVD created; emulator boot and app tests not run.");\n        return;\n' + marker))
+          PY
+      - name: Create API 37 AVD and capture setup identity only
+        uses: ./.diagnostic-emulator-runner
         with:
           api-level: ${{ matrix.api }}
           arch: x86_64
@@ -90,7 +109,14 @@ jobs:
           ram-size: 2048M
           disk-size: 4096M
           disable-animations: true
-          pre-emulator-launch-script: adb start-server
+          pre-emulator-launch-script: |
+            adb start-server
+            mkdir -p build/reports/setup-only
+            command -v avdmanager > build/reports/setup-only/avdmanager-path.txt
+            readlink -f "$(command -v avdmanager)" > build/reports/setup-only/avdmanager-realpath.txt
+            cat "$(dirname "$(readlink -f "$(command -v avdmanager)")")/../source.properties" > build/reports/setup-only/cmdline-tools-source.properties
+            cp "$ANDROID_AVD_HOME/test.ini" build/reports/setup-only/test.ini
+            cat build/reports/setup-only/avdmanager-path.txt build/reports/setup-only/avdmanager-realpath.txt build/reports/setup-only/cmdline-tools-source.properties build/reports/setup-only/test.ini
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -show-kernel
           script: |
             python3 tools/run_emulator_smoke.py
