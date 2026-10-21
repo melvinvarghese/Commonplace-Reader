@@ -95,7 +95,7 @@ class ReadiumHost(
                         parsed = PublicationOpener(EpubParser(OfflineHttpClient)).open(asset, allowUserInteraction = false, onCreatePublication = {
                             val original = container
                             val contentManifest = manifest
-                            container = object : Container<Resource> by original {
+                            container = ClosingResourceContainer(object : Container<Resource> by original {
                                 override fun get(url: Url): Resource? {
                                     // No arbitrary remote/file resources are delegated to the parser.
                                     if (url is AbsoluteUrl) return null
@@ -108,7 +108,7 @@ class ReadiumHost(
                                         catch (_: IllegalArgumentException) { Try.failure(ReadError.Decoding(IOException("Unsupported EPUB chapter content"))) }
                                     }
                                 }
-                            }
+                            })
                         }).getOrElse { throw ReaderOpenFailure("This EPUB could not be opened safely. Your writing is retained.", ErrorException(it)) }
                         handedToPublication = true
                     } finally { if (!handedToPublication) asset.close() }
