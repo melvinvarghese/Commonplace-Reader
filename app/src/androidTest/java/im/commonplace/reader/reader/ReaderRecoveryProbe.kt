@@ -30,6 +30,19 @@ class ReaderRecoveryProbe {
     private val repository get() = (context as CommonplaceApplication).container.readerRepository
     private fun marker(name: String) = File(context.filesDir, name)
     private fun durableWrite(name: String, text: String) { FileOutputStream(marker(name)).use { it.write(text.toByteArray()); it.fd.sync() } }
+    private fun modelState(scenario: ActivityScenario<ReaderActivity>): ReaderUiState {
+        var state: ReaderUiState? = null
+        scenario.onActivity { state = androidx.lifecycle.ViewModelProvider(it)[ReaderViewModel::class.java].uiState.value }
+        return requireNotNull(state)
+    }
+    private fun fixtureDiagnostics(scenario: ActivityScenario<ReaderActivity>, sourceId: String): String {
+        val state = modelState(scenario)
+        val roomDraft = runBlocking { repository.getDraft(sourceId) }
+        fun capture(value: im.commonplace.reader.reader.Capture?) = value?.let {
+            "quotation=${JSONObject.quote(it.quotation)}, payload=${it.location.payloadJson}"
+        } ?: "null"
+        return "Fixture model(status=${state.captureStatus}, reflection=${state.reflection?.let { JSONObject.quote(it) }}, selection=${capture(state.selection)}, draftSaved=${state.draftSaved}); Room draft=${roomDraft?.let { "reflection=${it.reflection?.let { text -> JSONObject.quote(text) }}, selection=${capture(it.capture)}" } ?: "null"}"
+    }
 
     @Test fun stageConfirmedReader() {
         if (InstrumentationRegistry.getArguments().getString("readerRecovery") != "stage") return
@@ -45,7 +58,12 @@ class ReaderRecoveryProbe {
             compose.onNodeWithText("Keep selected passage").performScrollTo().performClick()
             compose.onNodeWithTag("reader-reflection").performScrollTo().performTextInput(ReaderProofFixture.REFLECTION)
             compose.onNodeWithTag("reader-save").performScrollTo().performClick()
-            ReadiumProofTest.await { runBlocking { repository.observeEntries(source.id).first().any { it.body == ReaderProofFixture.REFLECTION } && repository.getDraft(source.id) == null } }
+            ReadiumProofTest.await(message = { fixtureDiagnostics(scenario, source.id) }) {
+                compose.waitForIdle()
+                modelState(scenario).captureStatus == CaptureStatus.Saved && runBlocking {
+                    repository.observeEntries(source.id).first().any { it.body == ReaderProofFixture.REFLECTION } && repository.getDraft(source.id) == null
+                }
+            }
             val entry = runBlocking { repository.observeEntries(source.id).first().single { it.kind == EntryKind.HIGHLIGHT } }
             assertEquals(selected.toJSON().toString(), entry.location!!.payloadJson)
             ReadiumProofTest.go(scenario, native, Locator.fromJSON(JSONObject("""{"href":"EPUB/two.xhtml","type":"application/xhtml+xml"}"""))!!)
@@ -56,9 +74,38 @@ class ReaderRecoveryProbe {
             ReadiumProofTest.script(scenario, "two.xhtml", """(function(){var node=document.querySelector('p').firstChild;var range=document.createRange();range.selectNodeContents(node);var selection=window.getSelection();selection.removeAllRanges();selection.addRange(range);return selection.toString();})()""")
             val draftSelection = runBlocking { kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) { native.currentSelection() } }!!.locator
             assertEquals("A different place for a durable bookmark.", draftSelection.text.highlight)
+            val expectedDraft = "Acknowledged draft survives actual process death."
+            val expectedDraftQuotation = draftSelection.text.highlight
+            val expectedDraftSelection = draftSelection.toJSON().toString()
+            fun hasDraftSelection(state: ReaderUiState) = state.selection?.let {
+                it.quotation == expectedDraftQuotation && it.location.payloadJson == expectedDraftSelection
+            } == true
             compose.onNodeWithText("Keep selected passage").performScrollTo().performClick()
-            compose.onNodeWithTag("reader-reflection").performScrollTo().performTextInput("Acknowledged draft survives actual process death.")
-            ReadiumProofTest.await { runBlocking { repository.getDraft(source.id)?.reflection == "Acknowledged draft survives actual process death." } }
+            ReadiumProofTest.await(message = { fixtureDiagnostics(scenario, source.id) }) {
+                compose.waitForIdle()
+                val state = modelState(scenario)
+                state.captureStatus == CaptureStatus.Unsaved && hasDraftSelection(state)
+            }
+            val beforeTyping = modelState(scenario)
+            assertTrue("Reflection must be empty before typing. ${fixtureDiagnostics(scenario, source.id)}", beforeTyping.reflection.isNullOrEmpty())
+            compose.onNodeWithTag("reader-reflection").performScrollTo().performTextInput(expectedDraft)
+            ReadiumProofTest.await(message = { fixtureDiagnostics(scenario, source.id) }) {
+                compose.waitForIdle()
+                val state = modelState(scenario)
+                state.reflection == expectedDraft && hasDraftSelection(state)
+            }
+            val afterTyping = modelState(scenario)
+            assertEquals("Model reflection after typing. ${fixtureDiagnostics(scenario, source.id)}", expectedDraft, afterTyping.reflection)
+            assertTrue("Model capture after typing. ${fixtureDiagnostics(scenario, source.id)}", hasDraftSelection(afterTyping))
+            ReadiumProofTest.await(message = { fixtureDiagnostics(scenario, source.id) }) {
+                compose.waitForIdle()
+                val state = modelState(scenario)
+                val draft = runBlocking { repository.getDraft(source.id) }
+                state.draftSaved && draft?.let {
+                    it.reflection == expectedDraft && it.capture.quotation == expectedDraftQuotation &&
+                        it.capture.location.payloadJson == expectedDraftSelection
+                } == true
+            }
             val expectedProgress = ReadiumProofTest.onMain { native.currentLocator.value.toJSON().toString() }
             scenario.moveToState(Lifecycle.State.CREATED)
             ReadiumProofTest.await { runBlocking { repository.getProgress(source.id)?.payloadJson == expectedProgress } }

@@ -74,6 +74,7 @@ READER_CASES = (
     'hostilePublicationMakesZeroRequestsToWorkingControlledEndpointWhileLocalReadingWorks',
     'malformedDrmAndFixedLayoutReportExplicitErrorOrUnsupported',
     'controlsRemainReachableAt200PercentTextInDarkLandscape',
+    'nativeContainerSurvivesResizePanelTransitionsAndTeardown',
 )
 PRE_READER_PASSING = PASSING
 PASSING = PASSING.replace('</testsuite>', ''.join(
@@ -137,6 +138,10 @@ class InstrumentationResultGuardTest(unittest.TestCase):
 
     def test_rejects_one_missing_native_reader_case(self):
         report = PASSING.replace(READER_CASES[0], "notTheNativeReaderContract")
+        self.assertNotEqual(self.run_guard(dict.fromkeys(("androidx", "composepdf"), report)).returncode, 0)
+
+    def test_rejects_missing_resize_and_teardown_native_case(self):
+        report = PASSING.replace("nativeContainerSurvivesResizePanelTransitionsAndTeardown", "notTheResizeAndTeardownContract")
         self.assertNotEqual(self.run_guard(dict.fromkeys(("androidx", "composepdf"), report)).returncode, 0)
 
     def test_rejects_malformed_xml(self):

@@ -63,6 +63,7 @@ READER_CASES = {
     'hostilePublicationMakesZeroRequestsToWorkingControlledEndpointWhileLocalReadingWorks',
     'malformedDrmAndFixedLayoutReportExplicitErrorOrUnsupported',
     'controlsRemainReachableAt200PercentTextInDarkLandscape',
+    'nativeContainerSurvivesResizePanelTransitionsAndTeardown',
 }
 
 def verify(root):

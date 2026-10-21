@@ -63,6 +63,54 @@ class ReadiumProofTest {
         assertNotNull(repositorySource(source.id))
     }
 
+    @Test fun nativeContainerSurvivesResizePanelTransitionsAndTeardown() = withBook { _, scenario ->
+        val native = navigator(scenario)
+        waitForWeb(scenario, "one.xhtml")
+        val publication = nativePublication(native)
+        val container = onMain { requireNotNull(native.requireActivity().findViewById<View>(im.commonplace.reader.R.id.readium_container)) }
+        val nativeView = onMain { native.requireView() }
+        var originalWidth = 0
+        var originalHeight = 0
+        scenario.onActivity {
+            assertEquals(Configuration.ORIENTATION_PORTRAIT, it.resources.configuration.orientation)
+            originalWidth = it.window.attributes.width
+            originalHeight = it.window.attributes.height
+        }
+        fun sameSessionInLayout(wide: Boolean) = await {
+            compose.waitForIdle()
+            var correctSize = false
+            scenario.onActivity {
+                assertSame(container, it.findViewById<View>(im.commonplace.reader.R.id.readium_container))
+                assertSame(nativeView, native.view)
+                assertTrue(container.isAttachedToWindow)
+                assertEquals(listOf(native), it.supportFragmentManager.fragments.filterIsInstance<EpubNavigatorFragment>())
+                val fullWidth = it.window.decorView.width
+                correctSize = container.height > 0 && fullWidth > 0 && if (wide) container.width * 4 < fullWidth * 3 else container.width * 4 > fullWidth * 3
+            }
+            correctSize
+        }
+        try {
+            repeat(3) {
+                compose.onNodeWithText("Saved items").performScrollTo().performClick()
+                sameSessionInLayout(wide = false)
+                // Resize the window, not the Activity configuration: one host lifetime,
+                // crossing the same constraints threshold that IME resizing can cross.
+                scenario.onActivity { activity -> activity.window.setLayout(originalWidth, (300 * activity.resources.displayMetrics.density).toInt()) }
+                sameSessionInLayout(wide = true)
+                scenario.onActivity { activity -> activity.window.setLayout(originalWidth, originalHeight) }
+                sameSessionInLayout(wide = false)
+                compose.onNodeWithText("Saved items").performScrollTo().performClick()
+                sameSessionInLayout(wide = false)
+            }
+        } finally {
+            scenario.onActivity { it.window.setLayout(originalWidth, originalHeight) }
+            compose.waitForIdle()
+        }
+        scenario.moveToState(Lifecycle.State.DESTROYED)
+        await { publication.get(org.readium.r2.shared.util.Url("EPUB/one.xhtml")!!) == null }
+        assertNull(onMain { native.view })
+    }
+
     @Test fun exactNativeSelectionCaptureBookmarkReopenDecorationAndSearch() = withBook { source, scenario ->
         val native = navigator(scenario)
         waitForWeb(scenario, "one.xhtml")
@@ -261,10 +309,10 @@ class ReadiumProofTest {
             field.isAccessible = true
             return field.get(native) as org.readium.r2.shared.publication.Publication
         }
-        fun await(condition: () -> Boolean) {
+        fun await(message: () -> String = { "Timed out waiting for actual reader state" }, condition: () -> Boolean) {
             val deadline = System.nanoTime() + 20_000_000_000L
             while (System.nanoTime() < deadline) { if (condition()) return; Thread.sleep(50) }
-            assertTrue("Timed out waiting for actual reader state", condition())
+            assertTrue(message(), condition())
         }
         fun <T> onMain(block: () -> T): T {
             var result: T? = null

@@ -8,6 +8,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextOverflow
@@ -111,20 +112,25 @@ private fun ReaderSourceScreen(activity: FragmentActivity, model: ReaderViewMode
                         }
                     }
                 }
-                val book = remember(host) { movableContentOf<Modifier, ReaderPhase, Boolean> { modifier, phase, ready ->
-                    Box(modifier) {
-                        if (host != null) AndroidView(
-                            factory = { context -> FragmentContainerView(context).apply { id = R.id.readium_container; doOnAttach { host.attach(id) } } },
-                            modifier = Modifier.fillMaxSize(),
-                        )
-                        if (phase == ReaderPhase.Opening && !ready) CircularProgressIndicator(Modifier.padding(24.dp))
+                // Resize the viewport without relocating the native container's composition.
+                Box(Modifier.fillMaxSize().padding(
+                    end = if (wide && panelVisible) maxWidth / 2 else 0.dp,
+                    bottom = if (!wide && panelVisible) panelHeight else 0.dp,
+                )) {
+                    if (host != null) AndroidView(
+                        factory = { context -> FragmentContainerView(context).apply { id = R.id.readium_container; doOnAttach { host.attach(id) } } },
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                    if (state.phase == ReaderPhase.Opening && !nativeReady) CircularProgressIndicator(Modifier.padding(24.dp))
+                }
+                if (panelVisible) {
+                    Box(Modifier.align(if (wide) Alignment.CenterEnd else Alignment.BottomCenter)
+                        .width(if (wide) maxWidth / 2 else maxWidth)
+                        .height(if (wide) maxHeight else panelHeight)) {
+                        if (wide) VerticalDivider(Modifier.align(Alignment.CenterStart))
+                        else HorizontalDivider(Modifier.align(Alignment.TopCenter))
+                        Box(Modifier.fillMaxSize().padding(start = if (wide) 1.dp else 0.dp, top = if (wide) 0.dp else 1.dp)) { panel() }
                     }
-                }
-                }
-                if (wide && panelVisible) {
-                    Row(Modifier.fillMaxSize()) { book(Modifier.weight(1f).fillMaxHeight(), state.phase, nativeReady); VerticalDivider(); Box(Modifier.weight(1f).fillMaxHeight()) { panel() } }
-                } else {
-                    Column(Modifier.fillMaxSize()) { book(Modifier.weight(1f).fillMaxWidth(), state.phase, nativeReady); if (panelVisible) { HorizontalDivider(); Box(Modifier.fillMaxWidth().heightIn(max = panelHeight)) { panel() } } }
                 }
             }
         }
