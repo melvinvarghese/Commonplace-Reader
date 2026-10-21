@@ -183,3 +183,34 @@ A new required native case performs three show-panel / short-window / full-windo
 Recovery staging now waits for the committed-save model acknowledgment, checks the second actual native selection and empty reflection before typing, preserves the original text-input action, and checks the exact model/Room draft acknowledgment. Fixture-only failure diagnostics expose the actual state rather than assuming a cause. No production ViewModel logic, timeout, exact-locator assertion or actual-death requirement changed.
 
 Fresh local verification: 76 JVM cases per flavor (152 total), zero failures/errors/skips; 41 Python regressions; both-flavor lint and app/test-APK assembly passed under strict dependency verification. Focused independent review found no concrete blocker, pending device evidence. The first aggregate build attempt stopped at an ambiguous Gradle task selector; it did not constitute a test result. The corrected run used the exact eight tasks from android.yml and completed successfully. Native lifecycle correction and all four actual process-death results remain unproven until the next complete gate.
+
+## ComposePdfReader comparison — Task 6
+
+**Experimental second comparison only; no accepted PDF engine. Task 7 remains pending.** Earlier Task 5 statements that Task 6 had not started describe that historical checkpoint and are not edited or weakened by this section.
+
+The exact candidate is `dev.nucleusframework:pdfium:158.0.8111.0`, resolving to `pdfium-android:158.0.8111.0`; engine identity is `nucleus-composepdf`, flavor `composepdf`. The released source archive, not the website's older 156-series example, defines the APIs under evaluation. [Official API reference](https://nucleusframework.dev/en/docs/pdf/api-reference/) and the [release source](https://github.com/NucleusFramework/ComposePdfReader/tree/590acd9355d74c1094e892c82e0597eed47fb9a4) were inspected before integration. `PdfPage` exposes an internal text-selection overlay but no public selection callback or saved-overlay input. `PageTextLayout` provides text boxes and page dimensions, not original crop bounds/rotation. Character indexes and viewport boxes will not be substituted for original-space durable highlights.
+
+### Test-first checkpoint
+
+The same committed fixture manifest, exact multilingual/repeated text, zero-based page requirements and shared `PdfProofAssertions` are retained. Nine candidate cases include large-file buffer duplication and three open/close/cancel cycles. Refusal assertions are deliberately safety checks, not geometric or highlight feature passes. The 1 PDF-point / 2 dp geometry thresholds at 1×/2×, manual overlays, saved-highlight recovery and performance budgets are unchanged. The shared 100 MiB fixture still has one page and cannot establish 20-page navigation latency.
+
+Before enabling the flavor, `configuredPdfCandidateOpensAndNeverPromotesForeignCoordinates` was observed failing with expected **Opening**, actual **Unsupported**, while the new instrumentation class compiled. This is JVM routing red evidence, not native rendering evidence. Native test-first execution and the independent all-ABI provenance audit are pending at this checkpoint. Source-checksum validation already exists for AndroidX and EPUB; the new route must invoke the same verifier before native opening. Unavailable ARM and true 16 KB hardware remain explicit release blockers, never emulator equivalence.
+
+### Native provenance findings
+
+The independent clean Maven retrieval and fresh strict dependency-graph resolution verify the Android AAR SHA-256 `21cbf3a27e77bdc8b520ec68dc33a4f1c770d58b01d9cecdfaa9d065958b668e`; Android source JAR `951239212cfd64da3342622472d21de90b505234f65b476a6bd9c741574b823b`; immutable wrapper source archive `6bcc3d7608c709d5f0a7d0bd79261a425c142b0ea772232c554fd0123394da70`. These are artifact/source identities, not a reproducible native-source build. The stale POM SCM URL is reconciled to the actual wrapper release/commit above.
+
+All four Android `libpdfium.so` payloads match their individually fetched [Chromium/8111 release assets](https://github.com/bblanchon/pdfium-binaries/releases/tag/chromium/8111) byte for byte, and each archive matches the release API's SHA-256 digest:
+
+| ABI / versioned asset | SHA-256 |
+| --- | --- |
+| arm64-v8a / `pdfium-android-arm64.tgz` | `727cb2645ece75d28d0b72f2ec05b82858ca3bfb6712cd333ffc248807016e2c` |
+| armeabi-v7a / `pdfium-android-arm.tgz` | `fc6a54e286a46a52e45d5bd52803f59f3b86dfcff73ba8f458939872f5466de3` |
+| x86_64 / `pdfium-android-x64.tgz` | `e2c31cffe42ee3a34e2b9d6c6c254ddf5da1541ce2d82216171e9354c86f0a7c` |
+| x86 / `pdfium-android-x86.tgz` | `7bb3c95e17450a077658a8128ba074dfdc040249d6f33c5d065d2146b3a82621` |
+
+All eight AAR ELF libraries (PDFium plus JNI wrapper for four ABIs) have GNU_RELRO and NOW. Both 64-bit ABIs have 16 KiB PT_LOAD alignment for both libraries; the 32-bit PDFium binaries have only 4 KiB alignment. The audit's existing APK passed `zipalign -c -P 16 -v 4`; final rebuilt-APK evidence is separate. Neither static result is a 16 KiB runtime pass. ARM and actual `PAGE_SIZE=16384` execution remain NOT RUN/release blockers.
+
+The verified upstream assets contain 21 identical PDFium/third-party license texts; the Maven AAR contains none. They must be included in the comparison APK rather than treating wrapper MIT as native license clearance. Upstream source-build download tasks pin release URLs but do not check hashes. They were inspected, not executed. A source rebuild through unchecked mutable hooks is not claimed; the downstream app clean-cache rebuild and checksum-enforced external retrieval path are separate verification work.
+
+Review clarified the memory/lifecycle bounds: the large test now samples combined Java/native allocations and PSS during opening, but finite sampling cannot prove that no transient copy exists. The inspected JNI explicitly copies the whole `ByteArray`. Three post-close PSS samples do not prove completion of upstream asynchronous disposal. The cancel case must actually observe `Opening` before destruction. Fixture SHA-256 is checked against the unchanged manifest before import; the changed-byte test uses a dedicated mutation-harness source rather than corrupting the reusable exact fixture. None of these safety checks waives durable geometry or selection requirements.

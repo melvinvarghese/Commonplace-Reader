@@ -48,3 +48,7 @@ The app requests no `INTERNET` permission and excludes private stores from Andro
 Commonplace is licensed under [Apache-2.0](LICENSE), as authorized by the owner; earlier Git history is preserved. Incorporated components retain their own terms: see [third-party notices](THIRD_PARTY_NOTICES.md). The project license does not relicense dependencies.
 
 The [architecture](docs/ARCHITECTURE.md) and [approved implementation plan](docs/superpowers/plans/2026-10-20-foundation-reader-proof.md) describe the intended milestone, not already-shipped features.
+
+## Task 6 comparison checkpoint
+
+Task 6 has now started, superseding only the earlier checkpoint's “not started” status above. The `composepdf` flavor evaluates the pinned NucleusFramework ComposePdfReader candidate, with engine identity `nucleus-composepdf`; it is an **experimental second comparison build only**, not the selected PDF reader. Test-first native, memory and provenance evidence is being collected in [READER_PROOF](docs/READER_PROOF.md#composepdfreader-comparison--task-6). Task 5's failed evidence and every acceptance threshold remain unchanged. Task 7 has not started.

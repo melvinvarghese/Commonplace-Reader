@@ -1,13 +1,30 @@
 import os
+import hashlib
+import importlib.util
 import shutil
 import subprocess
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 TOOLS = Path(__file__).parent
 from test_verify_android_test_results import PASSING
+
+
+class LargeFixtureStagingTest(unittest.TestCase):
+    def test_rejects_wrong_fixture_hash_before_adb(self):
+        spec = importlib.util.spec_from_file_location('smoke_under_test', TOOLS / 'run_emulator_smoke.py')
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            fixture = root / 'large.pdf'
+            fixture.write_bytes(b'wrong bytes')
+            with patch.object(module, 'REPORTS', root), patch.object(module, 'LARGE_FIXTURE', fixture), patch.object(Path, 'is_file', return_value=True), patch.object(module.subprocess, 'run') as run:
+                self.assertNotEqual(module.stage_large_composepdf_fixture(), 0)
+                run.assert_not_called()
 
 
 class EmulatorSmokeTest(unittest.TestCase):
@@ -20,25 +37,48 @@ class EmulatorSmokeTest(unittest.TestCase):
             (root / "tools/run_reader_recovery.py").write_text("import sys; sys.exit(" + str(reader_recovery_status) + ")\n")
             # Real subprocess boundaries; no emulator is available on this host.
             adb = root / 'adb'
-            adb.write_text('#!/bin/sh\nprintf "adb %s\\n" "$*"\nexit ' + str(adb_status) + '\n')
+            adb.write_text('#!/bin/sh\nprintf "adb %s\\n" "$*"\ncase "$*" in install*|exec-in*|"shell run-as"*) exit 0 ;; esac\nexit ' + str(adb_status) + '\n')
             adb.chmod(0o755)
             gradle = root / 'gradlew'
-            gradle.write_text('#!/bin/sh\nexit ' + str(gradle_status) + '\n')
+            gradle.write_text('''#!/bin/sh
+mkdir -p build/reports/emulator
+printf "%s\\n" "$*" >> build/reports/emulator/gradle-invocations.txt
+case "$*" in
+  *connectedAndroidxDebugAndroidTest*) flavor=androidx ;;
+  *connectedComposepdfDebugAndroidTest*) flavor=composepdf ;;
+esac
+if [ -n "$flavor" ] && [ -n "$TEST_REPORT_FIXTURE" ]; then
+  target="app/build/outputs/androidTest-results/connected/debug/flavors/$flavor"
+  mkdir -p "$target"
+  cp "$TEST_REPORT_FIXTURE" "$target/TEST-device.xml"
+fi
+exit ''' + str(gradle_status) + '\n')
             gradle.chmod(0o755)
+            fixture = root / 'fixture.xml'
             if reports:
                 for flavor in ('androidx', 'composepdf'):
                     folder = root / 'app/build/outputs/androidTest-results/connected/debug/flavors' / flavor
                     folder.mkdir(parents=True)
                     (folder / 'TEST-device.xml').write_text(PASSING)
+                fixture.write_text(PASSING)
+            transport_fixture = root / 'build/fixture-transport/large-100mib.local.pdf'
+            transport_fixture.parent.mkdir(parents=True, exist_ok=True)
+            transport_fixture.write_bytes(b'%PDF-smoke-test')
+            # Only the isolated harness substitutes its tiny fixture's expected hash.
+            runner = root / 'tools/run_emulator_smoke.py'
+            runner.write_text((TOOLS / 'run_emulator_smoke.py').read_text().replace(
+                '73c4e34e97311ce559c8755ee9c0e42f27f7fd6bc733db06a61a56fae0f69c6e',
+                hashlib.sha256(b'%PDF-smoke-test').hexdigest()))
             for flavor in ('androidx', 'composepdf'):
                 apk = root / f'app/build/outputs/apk/{flavor}/debug/app-{flavor}-debug.apk'
                 apk.parent.mkdir(parents=True)
                 apk.touch()
-            result = subprocess.run([sys.executable, str(TOOLS / 'run_emulator_smoke.py')],
-                                    cwd=root, env={**os.environ, 'PATH': str(root) + ':' + os.environ['PATH']},
+            result = subprocess.run([sys.executable, str(runner)],
+                                    cwd=root, env={**os.environ, 'TEST_REPORT_FIXTURE': str(fixture) if reports else '',
+                                                   'PATH': str(root) + ':' + os.environ['PATH']},
                                     capture_output=True, text=True, timeout=30)
-            artifacts = {str(p.relative_to(root)): p.read_text()
-                         for p in (root / 'build/reports/emulator').rglob('*.txt')}
+            artifacts = {str(p.relative_to(root)): p.read_text(errors='replace')
+                         for p in (root / 'build/reports/emulator').rglob('*') if p.is_file()}
             return result, artifacts
 
     def test_collects_live_evidence_and_preserves_gradle_failure(self):
@@ -69,6 +109,22 @@ class EmulatorSmokeTest(unittest.TestCase):
         result, artifacts = self.run_smoke(adb_status=9)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn('exit=9', artifacts['build/reports/emulator/after-tests/logcat.txt'])
+
+    def test_pdf_focus_runs_after_full_suite_and_keeps_separate_reports(self):
+        result, artifacts = self.run_smoke(gradle_status=7)
+        calls = artifacts['build/reports/emulator/gradle-invocations.txt'].splitlines()
+        self.assertEqual(len(calls), 3, calls)
+        self.assertIn(':app:connectedAndroidxDebugAndroidTest', calls[0])
+        self.assertIn(':app:connectedComposepdfDebugAndroidTest', calls[1])
+        self.assertIn(':app:connectedComposepdfDebugAndroidTest', calls[2])
+        self.assertIn('-Pandroid.testInstrumentationRunnerArguments.class=im.commonplace.reader.reader.pdf.PdfProofTest', calls[2])
+        self.assertEqual(result.returncode, 7, result.stdout + result.stderr)
+        self.assertTrue(any(name.startswith('build/reports/emulator/test-results/full-suite/androidx/')
+                            for name in artifacts))
+        self.assertTrue(any(name.startswith('build/reports/emulator/test-results/full-suite/composepdf/')
+                            for name in artifacts))
+        self.assertTrue(any(name.startswith('build/reports/emulator/test-results/pdf-focused/composepdf/')
+                            for name in artifacts))
 
 
 if __name__ == '__main__':

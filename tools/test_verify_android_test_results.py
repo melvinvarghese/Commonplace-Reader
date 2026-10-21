@@ -90,9 +90,13 @@ PDF_CASES = (
     'replacedBytesKeepWritingButNeverApplySyntheticSavedCoordinates',
     'malformedAndEncryptedDoNotCrashOrExplicitUnsupported',
 )
+COMPOSEPDF_ONLY_CASES = (
+    'largeDocumentDoesNotDuplicateFullFileBuffers',
+    'repeatedOpenCloseAndCancellationReleaseResources',
+)
 PASSING = PASSING.replace('</testsuite>', ''.join(
     f'<testcase name="{name}" classname="im.commonplace.reader.reader.pdf.PdfProofTest"/>'
-    for name in PDF_CASES) + '</testsuite>')
+    for name in (*PDF_CASES, *COMPOSEPDF_ONLY_CASES)) + '</testsuite>')
 
 class InstrumentationResultGuardTest(unittest.TestCase):
     def run_guard(self, reports):
@@ -103,6 +107,13 @@ class InstrumentationResultGuardTest(unittest.TestCase):
                 folder.mkdir()
                 (folder / "TEST-emulator.xml").write_text(content)
             return subprocess.run([sys.executable, str(SCRIPT), directory],
+                                  capture_output=True, text=True)
+
+    def run_pdf_focused_guard(self, content):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / 'TEST-device.xml').write_text(content)
+            return subprocess.run([sys.executable, str(SCRIPT), '--pdf-focused', directory],
                                   capture_output=True, text=True)
 
     def test_accepts_executed_shell_test_in_both_flavors(self):
@@ -163,9 +174,32 @@ class InstrumentationResultGuardTest(unittest.TestCase):
         self.assertIn("PDF cases did not execute", result.stderr)
         self.assertIn(PDF_CASES[0], result.stderr)
 
-    def test_composepdf_does_not_require_pdf_proof_cases(self):
+    def test_rejects_missing_composepdf_pdf_proof_case(self):
         result = self.run_guard({"androidx": PASSING, "composepdf": PRE_PDF_PASSING})
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("PDF cases did not execute", result.stderr)
+        self.assertIn(PDF_CASES[0], result.stderr)
+
+    def test_rejects_missing_composepdf_resource_proof_case(self):
+        case = COMPOSEPDF_ONLY_CASES[0]
+        report = PASSING.replace(
+            f'<testcase name="{case}" classname="im.commonplace.reader.reader.pdf.PdfProofTest"/>', '')
+        result = self.run_guard({"androidx": PASSING, "composepdf": report})
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn(case, result.stderr)
+
+    def test_focused_composepdf_requires_every_pdf_proof_case(self):
+        result = self.run_pdf_focused_guard(PASSING)
         self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('9 proof cases', result.stdout)
+
+    def test_focused_composepdf_rejects_missing_pdf_case(self):
+        case = COMPOSEPDF_ONLY_CASES[1]
+        report = PASSING.replace(
+            f'<testcase name="{case}" classname="im.commonplace.reader.reader.pdf.PdfProofTest"/>', '')
+        result = self.run_pdf_focused_guard(report)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn(case, result.stderr)
 
     def test_rejects_skipped_or_failed_androidx_pdf_case_with_case_name(self):
         for outcome in ("skipped", "failure"):

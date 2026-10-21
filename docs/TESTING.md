@@ -130,3 +130,15 @@ Resource-retirement regression: six new cases per flavor reproduce and guard clo
 Native harness synchronization preserves exact-locator assertions: wait for the requested chapter’s computed native position as well as trusted-script/DOM readiness. The 200% landscape check waits for real configuration recreation and restored configuration rather than forcing a second recreation during the first; its font/orientation and 48 dp assertions remain mandatory. Strict local gate remains 152 JVM/40 Python plus both-flavor lint and APKs; complete native/recovery matrix remains required.
 
 Run 39593165874 passes all 24 actual native EPUB cases (six per API/flavor) but not separate recovery. Recovery stage and verify now pass their ComposeTestRule to a mandatory clock-driving navigator helper, replacing the unsafe optional no-op callback. This applies the already reproduced bootstrap clock fix to both real-death phases without dropping assertions or extending deadlines. Complete strict local checks remain green at 152 JVM/40 Python and both-flavor lint/APKs. Full recovery evidence remains pending.
+
+## Task 6 ComposePdfReader comparison
+
+Task 6 now adds the independent `androidTestComposepdf` PDF proof suite; the earlier Task 5 text describes its historical checkpoint. This is an experimental comparison, not accepted PDF support. Both APIs must execute the candidate's tests; AndroidX's known failure must not suppress this second candidate. Missing named PDF cases, failures, errors and skips remain guard failures.
+
+```sh
+./gradlew --no-daemon --dependency-verification=strict \
+  :app:connectedComposepdfDebugAndroidTest \
+  -Pandroid.testInstrumentationRunnerArguments.class=im.commonplace.reader.reader.pdf.PdfProofTest
+```
+
+Generate the identical `large-100mib.local.pdf` outside APK assets with the existing fixture generator. Transport its bytes into the installed disposable Composepdf app's private `files/proof-large-100mib.pdf` before running the large test; the complete SHA-256 is in the unchanged fixture manifest. No missing fixture is treated as a skip or a memory pass. Painted page pixels, not the mere existence of a composable, are required by the renderer checks. Exact native extraction/search is not a UI-selection callback. Geometric refusal does not prove 1-point transforms or 2-dp restored overlays. Actual device outcomes, sampled memory and unrun phases will be recorded in [READER_PROOF](READER_PROOF.md#composepdfreader-comparison--task-6).

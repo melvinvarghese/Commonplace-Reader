@@ -87,6 +87,13 @@ jobs:
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
+      - name: Prepare Compose PDF large-file fixture transport
+        continue-on-error: true
+        run: |
+          python3 -m pip install -r tools/fixtures/requirements.txt
+          python3 tools/fixtures/generate_fixtures.py --output build/fixture-transport --large
+          echo '73c4e34e97311ce559c8755ee9c0e42f27f7fd6bc733db06a61a56fae0f69c6e  build/fixture-transport/large-100mib.local.pdf' | sha256sum --check -
+          ./gradlew --no-daemon --dependency-verification=strict :app:assembleComposepdfDebug
       - name: Check out the unchanged pinned emulator runner
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
