@@ -34,6 +34,22 @@ class ReaderViewModelTest {
     private fun open(id: String = a) { model.open(id); scheduler.runCurrent(); model.onReaderEvent(id, ReaderEvent.Opened(id, available)) }
     private fun select() { model.onReaderEvent(a, ReaderEvent.SelectionChanged(a, capture)) }
 
+    @Test fun configuredPdfCandidateOpensAndNeverPromotesForeignCoordinates() {
+        persistence.sources[a] = source(a).copy(format = DocumentFormat.PDF)
+        val engine = im.commonplace.reader.BuildConfig.PDF_ENGINE_ID
+        model = ReaderViewModel(persistence, engine.takeIf { it.isNotBlank() })
+        store.put("configured-pdf", model)
+        model.open(a); scheduler.runCurrent()
+        assertEquals(ReaderPhase.Opening, model.uiState.value.phase)
+        val own = SavedLocation(1, DocumentFormat.PDF, engine, """{"pageIndex":0,"pageBox":[0,0,612,792],"rotationDegrees":0,"coordinateSpace":"unrotated-pdf-points"}""")
+        model.onReaderEvent(a, ReaderEvent.PositionChanged(a, own))
+        val other = if (engine == "nucleus-composepdf") "androidx-pdf" else "nucleus-composepdf"
+        model.onReaderEvent(a, ReaderEvent.PositionChanged(a, own.copy(engineId = other)))
+        model.onReaderEvent(a, ReaderEvent.SelectionChanged(a, Capture("foreign", own.copy(engineId = other))))
+        assertEquals(own, model.uiState.value.currentLocation)
+        assertNull(model.uiState.value.selection)
+    }
+
     @Test fun pdfCandidateOpensWithoutPromotingAnotherEnginesLocations() {
         persistence.sources[a] = source(a).copy(format = DocumentFormat.PDF)
         model = ReaderViewModel(persistence, pdfEngineId = "androidx-pdf")

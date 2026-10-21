@@ -36,6 +36,8 @@ def snapshot(phase):
     for name, command in {
         'devices': ['devices', '-l'],
         'properties': ['shell', 'getprop'],
+        'page-size': ['shell', 'getconf', 'PAGE_SIZE'],
+        'system-memory': ['shell', 'cat', '/proc/meminfo'],
         'system-server': ['shell', 'pidof', 'system_server'],
         'services': ['shell', 'service', 'list'],
         'mount': ['shell', 'dumpsys', 'mount'],
@@ -107,10 +109,16 @@ def stage_large_composepdf_fixture():
 
 
 def run_instrumentation(flavor, *, focused=False):
+    prepare_status = 0
+    if flavor == 'composepdf':
+        # Uploaded checks-job APKs use another ephemeral debug keystore. Produce the
+        # local APK first, so staging and connected-test installs have one identity.
+        prepare_status = subprocess.run(['./gradlew', '--no-daemon', '--dependency-verification=strict',
+                                         ':app:assembleComposepdfDebug']).returncode
     if flavor == 'composepdf' and stage_large_composepdf_fixture() != 0:
         stage_status = 1
     else:
-        stage_status = 0
+        stage_status = prepare_status
     source = RESULTS / flavor
     if source.exists():
         shutil.rmtree(source)
@@ -142,7 +150,11 @@ def main():
     snapshot('before')
     androidx_status, _ = run_instrumentation('androidx')
     composepdf_status, fixture_status = run_instrumentation('composepdf')
+    capture(REPORTS, 'pdf-memory-full-suite', ['adb', 'exec-out', 'run-as',
+            'im.commonplace.reader.composepdf', 'cat', 'files/pdf-performance.txt'])
     focused_status, focused_fixture_status = run_instrumentation('composepdf', focused=True)
+    capture(REPORTS, 'pdf-memory-focused', ['adb', 'exec-out', 'run-as',
+            'im.commonplace.reader.composepdf', 'cat', 'files/pdf-performance.txt'])
     # Capture before the emulator runner terminates the guest, even if Gradle failed.
     snapshot('after-tests')
     print('Collecting diagnostic-only direct install/launch probes.', flush=True)
@@ -161,6 +173,8 @@ def main():
                                   str(RETAINED_RESULTS / 'full-suite')])
     focused_guard = subprocess.run([sys.executable, 'tools/verify_android_test_results.py',
                                     '--pdf-focused', str(RETAINED_RESULTS / 'pdf-focused/composepdf')])
+    print('Verifying PDF annotation-only force-stop/relaunch safety; native highlight recovery remains a separate unmet gate.', flush=True)
+    pdf_recovery_status = subprocess.run([sys.executable, 'tools/run_pdf_recovery.py']).returncode
     if androidx_status == 0 and composepdf_status == 0 and full_guard.returncode == 0 and focused_status == 0 and focused_guard.returncode == 0:
         print('Verifying real process-kill import recovery for both variants.', flush=True)
         recovery_status = subprocess.run([sys.executable, 'tools/run_import_recovery.py']).returncode
@@ -168,9 +182,9 @@ def main():
     if androidx_status == 0 and composepdf_status == 0 and focused_status == 0 and recovery_status == 0 and full_guard.returncode == 0 and focused_guard.returncode == 0:
         print('Verifying acknowledged reader writes across real force-stop and monkey relaunch.', flush=True)
         reader_recovery_status = subprocess.run([sys.executable, 'tools/run_reader_recovery.py']).returncode
-    print(f'Gate status: AndroidX={androidx_status}, Composepdf={composepdf_status}, focused-PDF={focused_status}, fixture-staging={fixture_status or focused_fixture_status}, import-recovery={recovery_status}, reader-recovery={reader_recovery_status}, full-suite guard={full_guard.returncode}, focused-PDF guard={focused_guard.returncode}', flush=True)
+    print(f'Gate status: AndroidX={androidx_status}, Composepdf={composepdf_status}, focused-PDF={focused_status}, fixture-staging={fixture_status or focused_fixture_status}, PDF-annotation-recovery={pdf_recovery_status}, import-recovery={recovery_status}, reader-recovery={reader_recovery_status}, full-suite guard={full_guard.returncode}, focused-PDF guard={focused_guard.returncode}', flush=True)
     return (androidx_status or composepdf_status or focused_status or fixture_status or focused_fixture_status
-            or recovery_status or reader_recovery_status or full_guard.returncode or focused_guard.returncode)
+            or pdf_recovery_status or recovery_status or reader_recovery_status or full_guard.returncode or focused_guard.returncode)
 
 
 if __name__ == '__main__':

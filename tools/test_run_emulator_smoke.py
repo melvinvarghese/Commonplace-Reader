@@ -28,21 +28,23 @@ class LargeFixtureStagingTest(unittest.TestCase):
 
 
 class EmulatorSmokeTest(unittest.TestCase):
-    def run_smoke(self, gradle_status=0, reports=True, adb_status=0, recovery_status=0, reader_recovery_status=0):
+    def run_smoke(self, gradle_status=0, reports=True, adb_status=0, recovery_status=0, reader_recovery_status=0, pdf_recovery_status=0):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             (root / 'tools').mkdir()
             shutil.copy(TOOLS / 'verify_android_test_results.py', root / 'tools')
             (root / 'tools/run_import_recovery.py').write_text('import sys; sys.exit(' + str(recovery_status) + ')\n')
             (root / "tools/run_reader_recovery.py").write_text("import sys; sys.exit(" + str(reader_recovery_status) + ")\n")
+            (root / 'tools/run_pdf_recovery.py').write_text('import sys; sys.exit(' + str(pdf_recovery_status) + ')\n')
             # Real subprocess boundaries; no emulator is available on this host.
             adb = root / 'adb'
-            adb.write_text('#!/bin/sh\nprintf "adb %s\\n" "$*"\ncase "$*" in install*|exec-in*|"shell run-as"*) exit 0 ;; esac\nexit ' + str(adb_status) + '\n')
+            adb.write_text('#!/bin/sh\nprintf "adb %s\\n" "$*" >> build/reports/emulator/timeline.txt\nprintf "adb %s\\n" "$*"\ncase "$*" in install*|exec-in*|"shell run-as"*) exit 0 ;; esac\nexit ' + str(adb_status) + '\n')
             adb.chmod(0o755)
             gradle = root / 'gradlew'
             gradle.write_text('''#!/bin/sh
 mkdir -p build/reports/emulator
 printf "%s\\n" "$*" >> build/reports/emulator/gradle-invocations.txt
+printf "gradle %s\\n" "$*" >> build/reports/emulator/timeline.txt
 case "$*" in
   *connectedAndroidxDebugAndroidTest*) flavor=androidx ;;
   *connectedComposepdfDebugAndroidTest*) flavor=composepdf ;;
@@ -86,6 +88,8 @@ exit ''' + str(gradle_status) + '\n')
         self.assertEqual(result.returncode, 7, result.stderr)
         for phase in ('before', 'after-tests', 'after-probes'):
             self.assertIn(f'build/reports/emulator/{phase}/logcat.txt', artifacts)
+            self.assertIn(f'build/reports/emulator/{phase}/page-size.txt', artifacts)
+            self.assertIn(f'build/reports/emulator/{phase}/system-memory.txt', artifacts)
             self.assertIn('adb shell dumpsys mount',
                           artifacts[f'build/reports/emulator/{phase}/mount.txt'])
         for flavor in ('androidx', 'composepdf'):
@@ -105,6 +109,20 @@ exit ''' + str(gradle_status) + '\n')
         result, _ = self.run_smoke(reader_recovery_status=7)
         self.assertEqual(result.returncode, 7, result.stdout + result.stderr)
 
+    def test_failed_pdf_annotation_recovery_is_an_independent_gate(self):
+        result, _ = self.run_smoke(pdf_recovery_status=6)
+        self.assertEqual(result.returncode, 6, result.stdout + result.stderr)
+
+    def test_locally_signed_app_is_built_before_private_fixture_install(self):
+        result, artifacts = self.run_smoke()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        timeline = artifacts['build/reports/emulator/timeline.txt'].splitlines()
+        builds = [i for i, line in enumerate(timeline) if ':app:assembleComposepdfDebug' in line]
+        installs = [i for i, line in enumerate(timeline) if line.startswith('adb install') and 'composepdf' in line]
+        tests = [i for i, line in enumerate(timeline) if ':app:connectedComposepdfDebugAndroidTest' in line]
+        self.assertTrue(builds, 'Downloaded APK signing key must not precede local Gradle signing')
+        self.assertLess(builds[0], installs[0]); self.assertLess(installs[0], tests[0])
+
     def test_diagnostic_failure_cannot_mask_successful_test_gate(self):
         result, artifacts = self.run_smoke(adb_status=9)
         self.assertEqual(result.returncode, 0, result.stderr)
@@ -113,11 +131,13 @@ exit ''' + str(gradle_status) + '\n')
     def test_pdf_focus_runs_after_full_suite_and_keeps_separate_reports(self):
         result, artifacts = self.run_smoke(gradle_status=7)
         calls = artifacts['build/reports/emulator/gradle-invocations.txt'].splitlines()
-        self.assertEqual(len(calls), 3, calls)
+        self.assertEqual(len(calls), 5, calls)
         self.assertIn(':app:connectedAndroidxDebugAndroidTest', calls[0])
-        self.assertIn(':app:connectedComposepdfDebugAndroidTest', calls[1])
+        self.assertIn(':app:assembleComposepdfDebug', calls[1])
         self.assertIn(':app:connectedComposepdfDebugAndroidTest', calls[2])
-        self.assertIn('-Pandroid.testInstrumentationRunnerArguments.class=im.commonplace.reader.reader.pdf.PdfProofTest', calls[2])
+        self.assertIn(':app:assembleComposepdfDebug', calls[3])
+        self.assertIn(':app:connectedComposepdfDebugAndroidTest', calls[4])
+        self.assertIn('-Pandroid.testInstrumentationRunnerArguments.class=im.commonplace.reader.reader.pdf.PdfProofTest', calls[4])
         self.assertEqual(result.returncode, 7, result.stdout + result.stderr)
         self.assertTrue(any(name.startswith('build/reports/emulator/test-results/full-suite/androidx/')
                             for name in artifacts))

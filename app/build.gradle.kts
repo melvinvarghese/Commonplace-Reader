@@ -34,7 +34,7 @@ android {
             dimension = "pdfEngine"
             applicationIdSuffix = ".composepdf"
             versionNameSuffix = "-composepdf"
-            buildConfigField("String", "PDF_ENGINE_ID", "\"\"")
+            buildConfigField("String", "PDF_ENGINE_ID", "\"nucleus-composepdf\"")
         }
     }
 
@@ -49,7 +49,6 @@ android {
     sourceSets.getByName("androidTest").java.srcDir("src/sharedTest/java")
     sourceSets.getByName("test").java.srcDir("src/androidTest/java/im/commonplace/reader/data")
     sourceSets.getByName("test").java.srcDir("src/androidTest/java/im/commonplace/reader/imports")
-    sourceSets.getByName("composepdf").java.srcDir("src/pdfUnavailable/java")
 
     buildFeatures {
         compose = true

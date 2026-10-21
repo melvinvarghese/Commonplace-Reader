@@ -138,35 +138,59 @@ class PdfProofTest {
             compose.onAllNodesWithTag("nucleus-pdf-page").assertCountEquals(0)
         }
     }
+    private fun recordMemory(phase: String): Int {
+        val info = Debug.MemoryInfo().also(Debug::getMemoryInfo)
+        val descriptor = InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommand("dumpsys -t 5 meminfo ${context.packageName}")
+        val dump = android.os.ParcelFileDescriptor.AutoCloseInputStream(descriptor).bufferedReader().use { it.readText() }
+        File(context.filesDir, "pdf-performance.txt").appendText("\n$phase; api=${Build.VERSION.SDK_INT}; sampledPssKiB=${info.totalPss}\n$dump\n")
+        Log.i("PdfProof", "$phase; totalPssKiB=${info.totalPss}")
+        return info.totalPss
+    }
     @Test fun largeDocumentDoesNotDuplicateFullFileBuffers() {
         val source = source("ordinary-text.pdf", large = true)
-        System.gc(); Thread.sleep(500)
+        File(context.filesDir, "pdf-performance.txt").writeText("run=${UUID.randomUUID()}; shared large fixture=${source.checksum}\n")
         val runtime = Runtime.getRuntime()
-        val javaBefore = runtime.totalMemory() - runtime.freeMemory()
-        val nativeBefore = Debug.getNativeHeapAllocatedSize()
-        val running = java.util.concurrent.atomic.AtomicBoolean(true)
-        val peakDelta = java.util.concurrent.atomic.AtomicLong(0)
-        val peakPss = java.util.concurrent.atomic.AtomicLong(0)
-        val sampler = kotlin.concurrent.thread(name = "pdf-memory-sampler") {
-            while (running.get()) {
-                val delta = runtime.totalMemory() - runtime.freeMemory() - javaBefore + Debug.getNativeHeapAllocatedSize() - nativeBefore
-                peakDelta.updateAndGet { maxOf(it, delta) }
-                val memory = Debug.MemoryInfo().also(Debug::getMemoryInfo)
-                peakPss.updateAndGet { maxOf(it, memory.totalPss.toLong()) }
-                Thread.sleep(10)
+        val latencies = mutableListOf<Long>()
+        val peaks = mutableListOf<Long>()
+        val duplicateSignals = mutableListOf<Long>()
+        val closes = mutableListOf<Int>()
+        repeat(3) { cycle ->
+            System.gc(); Thread.sleep(500)
+            recordMemory("large-cycle=$cycle before-open; warm process, not a cold-process claim")
+            val javaBefore = runtime.totalMemory() - runtime.freeMemory()
+            val nativeBefore = Debug.getNativeHeapAllocatedSize()
+            val running = java.util.concurrent.atomic.AtomicBoolean(true)
+            val peakDelta = java.util.concurrent.atomic.AtomicLong(0)
+            val peakPss = java.util.concurrent.atomic.AtomicLong(0)
+            val sampler = kotlin.concurrent.thread(name = "pdf-memory-sampler") {
+                while (running.get()) {
+                    val delta = runtime.totalMemory() - runtime.freeMemory() - javaBefore + Debug.getNativeHeapAllocatedSize() - nativeBefore
+                    peakDelta.updateAndGet { maxOf(it, delta) }
+                    val memory = Debug.MemoryInfo().also(Debug::getMemoryInfo)
+                    peakPss.updateAndGet { maxOf(it, memory.totalPss.toLong()) }
+                    Thread.sleep(10)
+                }
+            }
+            val started = System.nanoTime()
+            try {
+                launch(source).use { scenario ->
+                    ready(scenario)
+                    val elapsedMs = (System.nanoTime() - started) / 1_000_000
+                    latencies += elapsedMs
+                    recordMemory("large-cycle=$cycle after-first-painted-page")
+                    Log.i("PdfProof", "large=104857600; cycle=$cycle; openMs=$elapsedMs; sampledPeakJavaNativeDelta=${peakDelta.get()}; sampledPeakPssKiB=${peakPss.get()}; 20-page navigation NOT RUN: identical large fixture has one page")
+                }
+            } finally {
+                running.set(false); sampler.join(5000)
+                peaks += peakPss.get(); duplicateSignals += peakDelta.get()
+                System.gc(); Thread.sleep(500)
+                closes += recordMemory("large-cycle=$cycle after-close; upstream async disposal completion unobservable")
             }
         }
-        val started = System.nanoTime()
-        try {
-            launch(source).use { scenario ->
-                ready(scenario)
-                val elapsedMs = (System.nanoTime() - started) / 1_000_000
-                Log.i("PdfProof", "large=104857600; openMs=$elapsedMs; sampledPeakJavaNativeDelta=${peakDelta.get()}; sampledPeakPssKiB=${peakPss.get()}; 20-page navigation NOT RUN: identical large fixture has one page")
-                assertTrue("First painted page must be within 10 seconds", elapsedMs <= 10_000)
-                assertTrue("Sampled PSS must stay below 512 MiB", peakPss.get() < 512 * 1024)
-                assertTrue("Sampled two-full-buffer signal; inspected JNI also copies the whole ByteArray", peakDelta.get() < 150L * 1024 * 1024)
-            }
-        } finally { running.set(false); sampler.join(5000) }
+        assertTrue("First painted page must be within 10 seconds: $latencies", latencies.all { it <= 10_000 })
+        assertTrue("Sampled PSS must stay below 512 MiB: $peaks", peaks.all { it < 512 * 1024 })
+        assertTrue("Post-close PSS growth exceeds 32 MiB: $closes", closes.last() - closes.first() <= 32 * 1024)
+        assertTrue("Sampled two-full-buffer signal; inspected JNI copies the whole ByteArray: $duplicateSignals", duplicateSignals.all { it < 150L * 1024 * 1024 })
         // Sampling cannot prove an absent transient; inspected JNI confirms a complete copy.
     }
     @Test fun repeatedOpenCloseAndCancellationReleaseResources() {
