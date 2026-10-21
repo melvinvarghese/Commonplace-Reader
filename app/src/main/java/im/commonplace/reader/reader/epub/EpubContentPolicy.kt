@@ -6,6 +6,11 @@ import java.nio.charset.StandardCharsets
 
 /** Applied before Readium injects its own allowlisted navigator script. */
 object EpubContentPolicy {
+    fun allowsResource(mediaType: String?, href: String): Boolean {
+        // This proof does not sanitize standalone SVG documents; never hand one to a WebView.
+        val path = runCatching { java.net.URLDecoder.decode(href.substringBefore('?').substringBefore('#').replace("+", "%2B"), "UTF-8") }.getOrNull() ?: return false
+        return mediaType?.substringBefore(';')?.trim()?.equals("image/svg+xml", ignoreCase = true) != true && !path.endsWith(".svg", ignoreCase = true)
+    }
     fun sanitize(bytes: ByteArray): ByteArray {
         require(bytes.size <= 2 * 1024 * 1024) { "EPUB chapter exceeds the proof resource limit" }
         val html = bytes.toString(StandardCharsets.UTF_8)

@@ -21,6 +21,9 @@ class ShellTest {
 
     @Test
     fun launchAndNavigate() {
+        // Establish this empty-library case independently of real import/reader cases.
+        val app = androidx.test.core.app.ApplicationProvider.getApplicationContext<im.commonplace.reader.CommonplaceApplication>()
+        kotlinx.coroutines.runBlocking(kotlinx.coroutines.Dispatchers.IO) { app.container.database.clearAllTables() }
         // The class-based AndroidX resolver falls back to the test APK on API 37.
         val intent = Intent(InstrumentationRegistry.getInstrumentation().targetContext, MainActivity::class.java)
         ActivityScenario.launch<MainActivity>(intent).use {

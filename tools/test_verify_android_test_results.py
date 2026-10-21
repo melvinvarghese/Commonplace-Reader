@@ -67,6 +67,19 @@ PASSING = OLD_PASSING.replace('</testsuite>', ''.join(
     f'<testcase name="{name}" classname="im.commonplace.reader.fixtures.ProviderImportTest"/>'
     for name in PROVIDER_CASES) + '</testsuite>')
 
+READER_CASES = (
+    'readerOwnsOneRealNavigator',
+    'exactNativeSelectionCaptureBookmarkReopenDecorationAndSearch',
+    'sourceSwitchClosesPriorNavigatorAndIntegrityMismatchDoesNotApplyCoordinates',
+    'hostilePublicationMakesZeroRequestsToWorkingControlledEndpointWhileLocalReadingWorks',
+    'malformedDrmAndFixedLayoutReportExplicitErrorOrUnsupported',
+    'controlsRemainReachableAt200PercentTextInDarkLandscape',
+)
+PRE_READER_PASSING = PASSING
+PASSING = PASSING.replace('</testsuite>', ''.join(
+    f'<testcase name="{name}" classname="im.commonplace.reader.reader.ReadiumProofTest"/>'
+    for name in READER_CASES) + '</testsuite>')
+
 class InstrumentationResultGuardTest(unittest.TestCase):
     def run_guard(self, reports):
         with tempfile.TemporaryDirectory() as directory:
@@ -117,6 +130,13 @@ class InstrumentationResultGuardTest(unittest.TestCase):
 
     def test_rejects_one_missing_provider_case(self):
         report = PASSING.replace(PROVIDER_CASES[0], "notTheRealProviderContract")
+        self.assertNotEqual(self.run_guard(dict.fromkeys(("androidx", "composepdf"), report)).returncode, 0)
+
+    def test_rejects_previous_import_milestone_without_native_reader_cases(self):
+        self.assertNotEqual(self.run_guard(dict.fromkeys(("androidx", "composepdf"), PRE_READER_PASSING)).returncode, 0)
+
+    def test_rejects_one_missing_native_reader_case(self):
+        report = PASSING.replace(READER_CASES[0], "notTheNativeReaderContract")
         self.assertNotEqual(self.run_guard(dict.fromkeys(("androidx", "composepdf"), report)).returncode, 0)
 
     def test_rejects_malformed_xml(self):

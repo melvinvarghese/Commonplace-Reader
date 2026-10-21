@@ -43,6 +43,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 
 @Composable
 fun LibraryScreen(contentPadding: PaddingValues) {
+    val context = LocalContext.current
     val container = (LocalContext.current.applicationContext as CommonplaceApplication).container
     val viewModel = viewModel { LibraryViewModel(container.readerRepository, container.documentImporter) }
     val importing by viewModel.importing.collectAsStateWithLifecycle()
@@ -135,7 +136,7 @@ fun LibraryScreen(contentPadding: PaddingValues) {
                 is ImportResult.Failed -> "Import failed"
             }) },
             text = { Text(when (outcome) {
-                is ImportResult.Imported -> "A complete copy is stored on this device. The original was not changed. Reader proof follows next."
+                is ImportResult.Imported -> "A complete copy is stored on this device. The original was not changed."
                 is ImportResult.Duplicate -> "This exact document is already in your library."
                 is ImportResult.Unsupported -> outcome.reason
                 is ImportResult.Failed -> outcome.reason
@@ -148,11 +149,16 @@ fun LibraryScreen(contentPadding: PaddingValues) {
         )
     }
     selected?.let { source ->
-        AlertDialog(onDismissRequest = viewModel::closeSource,
+        if (source.availability == SourceAvailability.AVAILABLE && source.format == im.commonplace.reader.reader.DocumentFormat.EPUB) {
+            androidx.compose.runtime.LaunchedEffect(source.id) {
+                viewModel.closeSource()
+                context.startActivity(android.content.Intent(context, im.commonplace.reader.ReaderActivity::class.java).putExtra("sourceId", source.id))
+            }
+        } else AlertDialog(onDismissRequest = viewModel::closeSource,
             title = { Text(source.title) },
             text = { Text(if (source.availability == SourceAvailability.MISSING)
                 "The app-owned document is missing. Source metadata and writing are retained. Reattachment is not implemented yet."
-                else "${source.format.name} is stored on this device. Reading opens in the upcoming reader proof; it is not available in this build.") },
+                else "PDF reading is not implemented in this EPUB proof.") },
             confirmButton = { TextButton(onClick = viewModel::closeSource) { Text("Close") } })
     }
 }

@@ -56,6 +56,15 @@ PROVIDER_CASES = {
     'spoofedMimeUnknownLengthPipeImportsEpubAndSurvivesProviderRevocationOffline',
 }
 
+READER_CASES = {
+    'readerOwnsOneRealNavigator',
+    'exactNativeSelectionCaptureBookmarkReopenDecorationAndSearch',
+    'sourceSwitchClosesPriorNavigatorAndIntegrityMismatchDoesNotApplyCoordinates',
+    'hostilePublicationMakesZeroRequestsToWorkingControlledEndpointWhileLocalReadingWorks',
+    'malformedDrmAndFixedLayoutReportExplicitErrorOrUnsupported',
+    'controlsRemainReachableAt200PercentTextInDarkLandscape',
+}
+
 def verify(root):
     for flavor in ("androidx", "composepdf"):
         reports = sorted((root / flavor).rglob("TEST-*.xml"))
@@ -65,6 +74,7 @@ def verify(root):
         repository_passed = set()
         import_passed = set()
         provider_passed = set()
+        reader_passed = set()
         for report in reports:
             tree = ET.parse(report).getroot()
             for element in tree.iter():
@@ -83,16 +93,18 @@ def verify(root):
                     import_passed.add(element.get("name"))
                 if element.tag == "testcase" and element.get("classname") == "im.commonplace.reader.fixtures.ProviderImportTest":
                     provider_passed.add(element.get("name"))
+                if element.tag == "testcase" and element.get("classname") == "im.commonplace.reader.reader.ReadiumProofTest":
+                    reader_passed.add(element.get("name"))
         if not shell_passed:
             raise ValueError(f"{flavor}: launchAndNavigate did not execute")
         missing = REPOSITORY_CASES - repository_passed
         if missing:
             raise ValueError(f"{flavor}: repository cases did not execute: {sorted(missing)}")
-        for label, expected, executed in (("import", IMPORT_CASES, import_passed), ("provider", PROVIDER_CASES, provider_passed)):
+        for label, expected, executed in (("import", IMPORT_CASES, import_passed), ("provider", PROVIDER_CASES, provider_passed), ("reader", READER_CASES, reader_passed)):
             missing = expected - executed
             if missing:
                 raise ValueError(f"{flavor}: {label} cases did not execute: {sorted(missing)}")
-        print(f"{flavor}: shell, {len(REPOSITORY_CASES)} repository, {len(IMPORT_CASES)} import and {len(PROVIDER_CASES)} provider cases executed and passed")
+        print(f"{flavor}: shell, {len(REPOSITORY_CASES)} repository, {len(IMPORT_CASES)} import and {len(PROVIDER_CASES)} provider and {len(READER_CASES)} native reader cases executed and passed")
 
 
 if __name__ == "__main__":

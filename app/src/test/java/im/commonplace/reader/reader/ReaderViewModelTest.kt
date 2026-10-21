@@ -122,6 +122,26 @@ class ReaderViewModelTest {
         assertEquals(capture, model.uiState.value.selection)
         assertNull(persistence.entries.value.single().location)
     }
+    @Test fun lateBackgroundFlushCannotResurrectDraftAfterCaptureCommitsAndSourceSwitches() {
+        open(); select(); model.updateDraft("save me", null)
+        model.onReaderEvent(a, ReaderEvent.PositionChanged(a, location))
+        persistence.progressCommit = CompletableDeferred()
+        model.flushProgress(); scheduler.runCurrent()
+        model.saveSelection("save me", null); scheduler.runCurrent()
+        assertEquals(CaptureStatus.Saved, model.uiState.value.captureStatus)
+        open(b)
+        persistence.progressCommit.complete(Unit); scheduler.runCurrent()
+        assertNull(persistence.drafts[a]); assertEquals(1, persistence.entries.value.size)
+    }
+    @Test fun fastSourceRoundTripWaitsForAcknowledgedBoundaryDraftInsteadOfLosingIt() {
+        open(); select(); model.updateDraft("in-flight draft", null)
+        persistence.draftCommit = CompletableDeferred()
+        open(b); open(a)
+        persistence.draftCommit.complete(Unit); scheduler.runCurrent()
+        assertEquals(a, model.uiState.value.source?.id)
+        assertEquals("in-flight draft", model.uiState.value.reflection)
+        assertEquals(capture, model.uiState.value.selection)
+    }
     private fun entry(id: String, loc: SavedLocation?) = EntryEntity(id, if (loc == null) EntryKind.ANNOTATION else EntryKind.HIGHLIGHT, a, loc, null, null, if (loc == null) null else "same phrase", "Original book", null, 42, 1, 1)
     private inner class MemoryReaderStore : ReaderStore {
         val sources = mutableMapOf<String, SourceEntity>()
@@ -130,6 +150,8 @@ class ReaderViewModelTest {
         val entries = MutableStateFlow(emptyList<EntryEntity>())
         val bookmarks = mutableListOf<BookmarkEntity>()
         var commit = CompletableDeferred(Unit)
+        var draftCommit = CompletableDeferred(Unit)
+        var progressCommit = CompletableDeferred(Unit)
         var fail = false
         var cancelled = false
         override suspend fun getSource(sourceId: String) = sources[sourceId]
@@ -137,8 +159,8 @@ class ReaderViewModelTest {
         override suspend fun getDraft(sourceId: String) = drafts[sourceId]
         override fun observeEntries(sourceId: String) = entries.map { rows -> rows.filter { it.sourceId == sourceId } }
         override suspend fun getBookmarks(sourceId: String) = bookmarks.filter { it.sourceId == sourceId }
-        override suspend fun saveDraft(draft: ReaderDraftEntity) { drafts[draft.sourceId] = draft }
-        override suspend fun saveProgress(sourceId: String, location: SavedLocation) { progress[sourceId] = location }
+        override suspend fun saveDraft(draft: ReaderDraftEntity) { draftCommit.await(); drafts[draft.sourceId] = draft }
+        override suspend fun saveProgress(sourceId: String, location: SavedLocation) { progressCommit.await(); progress[sourceId] = location }
         override suspend fun saveCapture(sourceId: String, capture: Capture, reflection: String?, colorArgb: Int?): String {
             try { commit.await() } catch (e: CancellationException) { cancelled = true; throw e }
             if (fail) error("disk full")

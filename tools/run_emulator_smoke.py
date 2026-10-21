@@ -75,10 +75,14 @@ def main():
     if result.returncode == 0:
         print('Verifying real process-kill import recovery for both variants.', flush=True)
         recovery_status = subprocess.run([sys.executable, 'tools/run_import_recovery.py']).returncode
+    reader_recovery_status = 0
+    if result.returncode == 0 and recovery_status == 0:
+        print('Verifying acknowledged reader writes across real force-stop and monkey relaunch.', flush=True)
+        reader_recovery_status = subprocess.run([sys.executable, 'tools/run_reader_recovery.py']).returncode
     guard = subprocess.run([sys.executable, 'tools/verify_android_test_results.py',
                             'app/build/outputs/androidTest-results/connected/debug/flavors'])
-    print(f'Gate status: Gradle={result.returncode}, import-recovery={recovery_status}, executed-test guard={guard.returncode}', flush=True)
-    return result.returncode or recovery_status or guard.returncode
+    print(f'Gate status: Gradle={result.returncode}, import-recovery={recovery_status}, reader-recovery={reader_recovery_status}, executed-test guard={guard.returncode}', flush=True)
+    return result.returncode or recovery_status or reader_recovery_status or guard.returncode
 
 
 if __name__ == '__main__':

@@ -50,6 +50,9 @@ class ReaderViewModel(private val repository: ReaderStore) : ViewModel() {
     private var draftJob: Job? = null
     private val writes = Mutex()
     private var draftRevision = 0L
+    private val draftRevisions = mutableMapOf<String, Long>()
+    private val pendingFlushes = mutableMapOf<String, Job>()
+    private val pendingCaptures = mutableMapOf<String, Job>()
 
     fun open(sourceId: String) {
         if (activeId == sourceId && state.value.phase != ReaderPhase.Error) return
@@ -60,6 +63,8 @@ class ReaderViewModel(private val repository: ReaderStore) : ViewModel() {
         state.value = ReaderUiState()
         openJob = viewModelScope.launch {
             try {
+                pendingFlushes[sourceId]?.join()
+                pendingCaptures[sourceId]?.join()
                 val source = repository.getSource(sourceId) ?: error("missing source")
                 val progress = repository.getProgress(sourceId)
                 val draft = repository.getDraft(sourceId)
@@ -128,6 +133,7 @@ class ReaderViewModel(private val repository: ReaderStore) : ViewModel() {
         val id = snapshot.source?.id ?: return
         if (snapshot.selection == null) return
         val revision = ++draftRevision
+        draftRevisions[id] = revision
         val token = generation
         draftJob = viewModelScope.launch { delay(300); persistDraft(id, snapshot, revision, token) }
     }
@@ -138,9 +144,10 @@ class ReaderViewModel(private val repository: ReaderStore) : ViewModel() {
         if (snapshot.captureStatus == CaptureStatus.Pending || snapshot.captureStatus == CaptureStatus.Saved) return
         draftJob?.cancel()
         val revision = ++draftRevision
+        draftRevisions[id] = revision
         val token = generation
         state.update { it.copy(reflection = reflection, colorArgb = colorArgb, captureStatus = CaptureStatus.Pending, message = null, draftSaved = false) }
-        viewModelScope.launch {
+        val job = viewModelScope.launch {
             try {
                 writes.withLock {
                     repository.saveDraft(ReaderDraftEntity(id, capture, reflection, colorArgb, System.currentTimeMillis()))
@@ -150,6 +157,7 @@ class ReaderViewModel(private val repository: ReaderStore) : ViewModel() {
             } catch (e: CancellationException) { throw e }
             catch (_: Exception) { if (token == generation) state.update { it.copy(captureStatus = CaptureStatus.Failed, message = "Not saved. Your passage and reflection are kept here; retry.") } }
         }
+        track(pendingCaptures, id, job)
     }
     fun addBookmark() {
         val snapshot = state.value
@@ -181,11 +189,16 @@ class ReaderViewModel(private val repository: ReaderStore) : ViewModel() {
         val snapshot = state.value
         val id = snapshot.source?.id ?: return
         val token = generation
-        val revision = draftRevision
-        viewModelScope.launch {
+        val revision = draftRevisions[id] ?: 0L
+        val job = viewModelScope.launch {
             snapshot.currentLocation?.let { persistProgress(id, it, token) }
             if (snapshot.selection != null && snapshot.captureStatus != CaptureStatus.Saved && snapshot.captureStatus != CaptureStatus.Pending) persistDraft(id, snapshot, revision, token)
         }
+        track(pendingFlushes, id, job)
+    }
+    private fun track(jobs: MutableMap<String, Job>, id: String, job: Job) {
+        jobs[id] = job
+        job.invokeOnCompletion { if (jobs[id] === job) jobs.remove(id) }
     }
     private suspend fun persistProgress(id: String, location: SavedLocation, token: Long) {
         try { repository.saveProgress(id, location) }
@@ -196,7 +209,7 @@ class ReaderViewModel(private val repository: ReaderStore) : ViewModel() {
         val capture = snapshot.selection ?: return
         try {
             writes.withLock {
-                if (token == generation && revision != draftRevision) return
+                if ((draftRevisions[id] ?: 0L) != revision) return
                 repository.saveDraft(ReaderDraftEntity(id, capture, snapshot.reflection, snapshot.colorArgb, System.currentTimeMillis()))
             }
             if (token == generation && revision == draftRevision) state.update { it.copy(draftSaved = true) }

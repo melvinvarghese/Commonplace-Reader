@@ -21,6 +21,13 @@ class EpubContentPolicyTest {
         assertTrue(csp.contains("frame-src 'none'"))
         assertTrue(safe.select("meta[http-equiv=refresh]").isEmpty())
     }
+    @Test fun rejectsSvgResourcesByMediaTypeOrDecodedHrefBeforeNavigatorAttachment() {
+        assertFalse(EpubContentPolicy.allowsResource("image/svg+xml", "EPUB/vector.xml"))
+        assertFalse(EpubContentPolicy.allowsResource("IMAGE/SVG+XML; charset=utf-8", "EPUB/vector"))
+        assertFalse(EpubContentPolicy.allowsResource(null, "EPUB/scripted%2ESVG?query=1#node"))
+        assertTrue(EpubContentPolicy.allowsResource("application/xhtml+xml", "EPUB/one.xhtml"))
+        assertTrue(EpubContentPolicy.allowsResource("image/png", "EPUB/image.png"))
+    }
     @Test fun rejectsOversizeAndEntityDeclarationsBeforeParsing() {
         assertThrows(IllegalArgumentException::class.java) { EpubContentPolicy.sanitize(ByteArray(2 * 1024 * 1024 + 1)) }
         assertThrows(IllegalArgumentException::class.java) { EpubContentPolicy.sanitize("<!DOCTYPE html [<!ENTITY x SYSTEM 'file:///private'>]><html>&x;</html>".toByteArray()) }
