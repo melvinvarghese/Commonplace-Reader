@@ -233,12 +233,14 @@ The other eight native payloads match pinned `androidx.graphics:graphics-path:1.
 
 ### First implemented native matrix and clean-cache rebuild
 
-[Run 39632235542](https://github.com/melvinvarghese/Commonplace-Reader/actions/runs/39632235542) is exactly main commit `3c1c60a1f839f9adb9d3adb88a56579d66901409`. Static checks succeeded; both 2 GiB x86_64 emulator jobs failed. The full suites now executed real reports:
+[Run 39632235542](https://github.com/melvinvarghese/Commonplace-Reader/actions/runs/39632235542) is exactly main commit `3c1c60a1f839f9adb9d3adb88a56579d66901409`. Static checks succeeded; both x86_64 emulator jobs failed. The workflow requested 2 GiB per AVD; actual guest memory is recorded separately below. The full suites now executed real reports:
 
 | API | AndroidX full | Composepdf full | Composepdf focused PDF |
 | --- | --- | --- | --- |
 | 28 | 61 cases, 0 failures | 65 cases, 3 failures | 9 cases, 3 failures |
 | 37.0 | 61 cases, 1 failure | 65 cases, 2 failures | 9 cases, 2 failures |
+
+The measured profiles were API 28 `Android SDK built for x86_64`, `MemTotal=2,046,996 kB`, and API 37 `sdk_gphone64_x86_64`, `MemTotal=4,009,372 kB`, SDK R–V extensions 22. API 28 exposes no extension properties. Despite identical requested `ram-size: 2048M`, the API 37 guest reports approximately 4 GiB, not 2 GiB. Its results are **not a matched-2-GiB performance benchmark**. This observed Task 6 discrepancy is not relabelled as the requested profile or used to alter Task 5's historical evidence.
 
 All reports have zero skips. AndroidX's API 37 navigation/zoom failure is the retained Task 5 outcome, not a new pass. Composepdf's crop/rotation case hit the painted-page timeout on both APIs. Its API 28 large-file and cancellation cases could not obtain the staged 100 MiB file; these are **fixture/evidence failures, not native-memory measurements**. API 37 reached the exact large document but timed out before a usable painted page. A Poppler reference render of the unchanged rotated/cropped fixture contains visible ink; this does not establish which native/layout issue caused the candidate's timeout.
 
@@ -249,3 +251,38 @@ API 37 focused large-cycle 0 recorded **109,597 KiB PSS before open and 108,693 
 The external retrieval and downstream clean-cache rebuild **succeeded** separately at the same commit: fresh `git archive` checkout and `GRADLE_USER_HOME`, strict dependency verification, `--no-build-cache --rerun-tasks :app:assembleComposepdfDebug`, all 40 tasks executed. The clean APK SHA-256 is `7d8a833fefe792fed817991da2a70accb933091c472db77c4eb786e961a5f2e1`. All **16** native payloads match their exact verified Maven AARs, all four engine payloads match freshly retrieved checksum-pinned external assets, all 23 notices match, all 16 have RELRO/NOW, and APK `zipalign -P 16` passes. The two 32-bit PDFium objects still have 4 KiB PT_LOAD alignment. The two app APK hashes are different; no bit-identical app build or upstream native-source reproducibility is claimed.
 
 Follow-up is limited to evidence collection: independently read back/hash the transported bytes before instrumentation, retain failed-frame dimensions/ink and real failure screenshots, and preserve raw memory/peak diagnostics in logcat. A truncation regression was observed failing before the readback guard. No renderer, SDK, dependency, fixture, deadline, mandatory native assertion or Task 5 record is changed. No PDF engine is accepted; ARM/true 16 KiB execution and native geometry/performance remain blockers. Task 7 is not started.
+
+### Final Task 6 outcome — evaluated, not accepted
+
+**Task 6 is complete as a rejected experimental comparison.** The candidate cannot satisfy durable PDF capture/highlighting: its pinned API supplies neither an application selection callback with original crop/rotation geometry nor saved-highlight input. The host does not invent quads, write page-only captures or promote foreign-engine coordinates. Native source inspection and the measured allocation spike also contradict a no-full-file-duplication claim. No PDF engine is selected; **Task 7 remains pending**.
+
+The final completed [run 39637129857](https://github.com/melvinvarghese/Commonplace-Reader/actions/runs/39637129857) is exactly `193105c528549431bade033045b0e8237885d095`. That commit preserves the owner's README-only addition on top of reviewed evidence commit `63d8e46`; native production code is unchanged from `3c1c60a`. The superseded `63d8e46` run 39636176265 was **cancelled**, not counted as a completed native proof. All integration used normal fast-forwards; no owner README work was overwritten.
+
+| Final executed report | API 28 | API 37.0 |
+| --- | --- | --- |
+| AndroidX full, retained comparison | 61 cases / 0 failures | 61 / 1 retained navigation failure |
+| Composepdf full | 65 / 3 failures | 65 / 2 failures |
+| Composepdf focused PDF | 9 / 3 failures | 9 / 2 failures |
+| Separate actual PDF source-annotation death/reopen | PASS | PASS |
+
+All XML reports contain zero errors/skips. Static checks pass; the complete strict local gate records **173 JVM tests (87 + 86), 61 Python regressions, lint with no errors and app/test-APK assembly**. These successes do not turn failed or unrun PDF capabilities into passes.
+
+**The final diagnostics correct an important interpretation of the rendering failures.** Actual screenshot files show rendered crop/rotation and large-document glyphs. The unchanged readiness check samples every second pixel and requires more than 20 dark samples; on the 320-pixel viewport it saw only **18** for the rotated page and **14** for the large page. Thus the test's pixel gate failed; this is **not proof that PDFium rendered a blank page**, nor evidence that the first native pixel took over 10 seconds. `firstPaintMs=NOT_REACHED` describes that predicate, not an independently measured first-paint timestamp. Narrow-screen controls also clip in these diagnostic screenshots. No numeric threshold was lowered, fake renderer callback added or late screenshot treated as durable geometry proof. Real files are retained under `build/reports/emulator/screenshots/{full-suite,pdf-focused}-{rotated-cropped,large}.png` in the job artifacts.
+
+**API 28 performance is NOT RUN with a valid large document.** The device readback guard caught permanently short copies despite ADB returning success: 103,874,560 bytes in the full run and 103,872,512 in the focused run, versus the required 104,857,600. The different hashes were rejected after all bounded readbacks. The fixture helper reported the same short sizes inside instrumentation; these are transport failures, not native memory outcomes. The original manifest and corpus were not changed to accept them.
+
+**API 37 received the exact 100 MiB file**, with manifest hash `73c4e34e97311ce559c8755ee9c0e42f27f7fd6bc733db06a61a56fae0f69c6e` confirmed by device readback before both invocations. Its first warm large-file attempt produced these finite samples:
+
+| Reading | Full suite | Focused suite |
+| --- | ---: | ---: |
+| Before-open total PSS, KiB | 200,348 | 109,752 |
+| Sampled peak total PSS, KiB | 418,339 | 325,871 |
+| Peak additional Java + native allocated bytes | 225,505,104 | 223,308,320 |
+| After-close total PSS, KiB | 199,751 | 108,667 |
+| Pixel readiness / usable-page latency | Predicate not reached | Predicate not reached |
+
+The peaks are about **408.534 / 318.233 MiB PSS**, with **215.058 / 212.963 MiB** additional Java/native allocations for a 100 MiB source. This supports the source-audited whole-ByteArray/JNI copy concern; finite net sampling alone is not a proof of every allocation. The sampled PSS peaks are below 512 MiB, but the entire performance protocol did **not** pass. The first predicate failure stops later large-file cycles. Ordinary-file post-close readings and an early-Opening cancellation test are not three large-file cleanup cycles or an acknowledgment of upstream native disposal.
+
+The final API 37 guest again reported approximately 4 GiB (`MemTotal=4,009,376 kB`) despite the requested 2 GiB setting; API 28 reported 2,046,996 kB. Therefore the API 37 readings are not matched-2-GiB acceptance evidence. **Unrun/unproven:** cold-process latency, true first-usable-page timing, one-second navigation over 20 pages (the shared large fixture has one), three successful large-file cycles, profiler/StrictMode confirmation, complete native cleanup, original-space 1-point transforms, 2-dp restored overlays, durable selection/highlight/bookmark/progress/jump-back, full PDF accessibility, ARM execution and an Android system reporting `PAGE_SIZE=16384`. The source-annotation safety passes cannot offset any of these gaps.
+
+The native artifact audit and downstream clean-cache rebuild above remain valid: all 16 packaged SOs and 23 notices checked, four external engine payloads pinned and matched, RELRO/NOW present and actual-APK ZIP alignment passed. The two 32-bit PDFium objects remain 4-KiB-aligned; no native-source reproducibility, blanket transitive legal clearance, real 16-KiB compatibility or ARM support is claimed. Source-checksum rejection preserves writing before native attachment in both PDF hosts through the same verifier. Task 5's code, corpus, thresholds and rejection records are unchanged.
