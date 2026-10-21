@@ -48,7 +48,8 @@ def run_flavor(flavor):
     folder.mkdir(parents=True, exist_ok=True)
     stage_log = folder / "stage.txt"
     verify_log = folder / "verify.txt"
-    marker = ["shell", "run-as", package, "test", "-f", "files/import-recovery-ready"]
+    # `test` is a shell builtin, not an executable on some supported Android images.
+    marker = ["shell", "run-as", package, "/system/bin/cat", "files/import-recovery-ready"]
     pid_command = ["shell", "pidof", package]
     stage = None
     try:
@@ -77,7 +78,8 @@ def run_flavor(flavor):
             ready = False
             while time.monotonic() < deadline:
                 marker_result = adb(marker, stage_log, timeout=5)
-                if marker_result is not None and marker_result.returncode == 0:
+                if (marker_result is not None and marker_result.returncode == 0
+                        and (marker_result.stdout or "").strip() == "ready"):
                     ready = True
                     output.write("confirmed readiness marker\n")
                     break

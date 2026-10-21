@@ -21,7 +21,7 @@ class FakeProcess:
 
 
 class ImportRecoveryTest(unittest.TestCase):
-    def exercise(self, *, ready=True, running=True, install_status=0, verify_output="OK (1 test)\n"):
+    def exercise(self, *, ready=True, running=True, install_status=0, legacy_no_test=False, marker_content="ready\n", verify_output="OK (1 test)\n"):
         temp = tempfile.TemporaryDirectory()
         self.addCleanup(temp.cleanup)
         reports = Path(temp.name) / "build/reports/import-recovery"
@@ -39,7 +39,11 @@ class ImportRecoveryTest(unittest.TestCase):
             if command[1] == "install":
                 return subprocess.CompletedProcess(command, install_status, "", "")
             if "test" in command and any("import-recovery-ready" in arg for arg in command):
+                if legacy_no_test:
+                    return subprocess.CompletedProcess(command, 1, "", "run-as: exec failed for test: Permission denied\n")
                 return subprocess.CompletedProcess(command, 0 if ready else 1, "", "")
+            if "/system/bin/cat" in command and any("import-recovery-ready" in arg for arg in command):
+                return subprocess.CompletedProcess(command, 0 if ready else 1, marker_content if ready else "", "")
             if command[1:3] == ["shell", "pidof"]:
                 stdout, status = next(pids)
                 if not running and status == 0:
@@ -76,6 +80,20 @@ class ImportRecoveryTest(unittest.TestCase):
                                 for command in commands))
             self.assertTrue((reports / flavor / "stage.txt").exists())
             self.assertTrue((reports / flavor / "verify.txt").exists())
+
+    def test_api28_without_external_test_command_uses_exact_private_marker(self):
+        status, calls, _, _ = self.exercise(legacy_no_test=True)
+        self.assertEqual(status, 0)
+        self.assertTrue(any("/system/bin/cat" in command for command, _ in calls))
+        self.assertFalse(any("test" in command for command, _ in calls))
+
+    def test_empty_or_wrong_marker_contents_never_count_as_readiness(self):
+        for contents in ("", "not ready", "ready but corrupted"):
+            with self.subTest(contents=contents):
+                status, calls, _, _ = self.exercise(marker_content=contents)
+                self.assertNotEqual(status, 0)
+                self.assertFalse(any(any("reopenAfterKill" in arg for arg in command)
+                                     for command, _ in calls))
 
     def test_missing_ready_marker_never_counts_as_recovery(self):
         status, calls, _, reports = self.exercise(ready=False)
