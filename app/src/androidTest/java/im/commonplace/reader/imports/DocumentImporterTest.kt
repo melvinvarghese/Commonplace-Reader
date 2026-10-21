@@ -230,15 +230,21 @@ class DocumentImporterTest {
     }
     @Test fun cancellationAtRegistrationNeverDeletesDurablyReferencedAsset() = runBlocking {
         val parent = Job()
-        val cancelledAfterInsert = java.util.concurrent.atomic.AtomicBoolean(false)
+        val cancelledAfterInsert = CompletableDeferred<Unit>()
+        fun cancelAfterInsert() {
+            if (cancelledAfterInsert.isCompleted) return
+            val inserted = db.openHelper.readableDatabase.query("SELECT COUNT(*) FROM sources").use {
+                it.moveToFirst(); it.getInt(0) > 1
+            }
+            if (inserted) { parent.cancel(); cancelledAfterInsert.complete(Unit) }
+        }
         val dispatcher = object : CoroutineDispatcher() {
             override fun dispatch(context: kotlin.coroutines.CoroutineContext, block: Runnable) {
                 Dispatchers.IO.dispatch(context, Runnable {
-                    val inserted = db.openHelper.readableDatabase.query("SELECT COUNT(*) FROM sources").use {
-                        it.moveToFirst(); it.getInt(0) > 1
-                    }
-                    if (inserted) { cancelledAfterInsert.set(true); parent.cancel() }
-                    block.run()
+                    // Room can finish INSERT synchronously within a dispatched block on API 28.
+                    // Check both edges; do not assume it always resumes in a second dispatch.
+                    cancelAfterInsert()
+                    try { block.run() } finally { cancelAfterInsert() }
                 })
             }
         }
@@ -247,7 +253,8 @@ class DocumentImporterTest {
         try {
             val task = async(Dispatchers.IO + parent) { operation.importDocument(uri) }
             try { task.await() } catch (_: CancellationException) { }
-            assertTrue("cancel must happen after durable INSERT, before its dispatched continuation", cancelledAfterInsert.get())
+            withTimeout(5_000) { cancelledAfterInsert.await() }
+            assertTrue("the owner job must actually be cancelled after INSERT", parent.isCancelled)
             val source = imported().single()
             assertArrayEquals(epub(), File(root, source.assetPath).readBytes())
             assertEquals(1, root.walkTopDown().count { it.isFile })
