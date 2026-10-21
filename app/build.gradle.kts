@@ -28,11 +28,13 @@ android {
             dimension = "pdfEngine"
             applicationIdSuffix = ".androidx"
             versionNameSuffix = "-androidx"
+            buildConfigField("String", "PDF_ENGINE_ID", "\"androidx-pdf\"")
         }
         create("composepdf") {
             dimension = "pdfEngine"
             applicationIdSuffix = ".composepdf"
             versionNameSuffix = "-composepdf"
+            buildConfigField("String", "PDF_ENGINE_ID", "\"\"")
         }
     }
 
@@ -47,9 +49,11 @@ android {
     sourceSets.getByName("androidTest").java.srcDir("src/sharedTest/java")
     sourceSets.getByName("test").java.srcDir("src/androidTest/java/im/commonplace/reader/data")
     sourceSets.getByName("test").java.srcDir("src/androidTest/java/im/commonplace/reader/imports")
+    sourceSets.getByName("composepdf").java.srcDir("src/pdfUnavailable/java")
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 

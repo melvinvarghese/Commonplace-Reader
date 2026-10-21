@@ -80,6 +80,19 @@ PRE_READER_PASSING = PASSING
 PASSING = PASSING.replace('</testsuite>', ''.join(
     f'<testcase name="{name}" classname="im.commonplace.reader.reader.ReadiumProofTest"/>'
     for name in READER_CASES) + '</testsuite>')
+PRE_PDF_PASSING = PASSING
+PDF_CASES = (
+    'renderingNavigationZoomAndRecreationOrExplicitUnsupported',
+    'exactNativeMultilingualSearchAndSelectionOrExplicitUnsupported',
+    'repeatedTextSearchUsesZeroBasedNativePagesOrExplicitUnsupported',
+    'croppedRotatedGeometryIsNotInventedOrExplicitUnsupported',
+    'noTextIsExactAndNotDiagnosedAsScanOrExplicitUnsupported',
+    'replacedBytesKeepWritingButNeverApplySyntheticSavedCoordinates',
+    'malformedAndEncryptedDoNotCrashOrExplicitUnsupported',
+)
+PASSING = PASSING.replace('</testsuite>', ''.join(
+    f'<testcase name="{name}" classname="im.commonplace.reader.reader.pdf.PdfProofTest"/>'
+    for name in PDF_CASES) + '</testsuite>')
 
 class InstrumentationResultGuardTest(unittest.TestCase):
     def run_guard(self, reports):
@@ -143,6 +156,28 @@ class InstrumentationResultGuardTest(unittest.TestCase):
     def test_rejects_missing_resize_and_teardown_native_case(self):
         report = PASSING.replace("nativeContainerSurvivesResizePanelTransitionsAndTeardown", "notTheResizeAndTeardownContract")
         self.assertNotEqual(self.run_guard(dict.fromkeys(("androidx", "composepdf"), report)).returncode, 0)
+
+    def test_rejects_missing_androidx_pdf_proof_case(self):
+        result = self.run_guard({"androidx": PRE_PDF_PASSING, "composepdf": PASSING})
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("PDF cases did not execute", result.stderr)
+        self.assertIn(PDF_CASES[0], result.stderr)
+
+    def test_composepdf_does_not_require_pdf_proof_cases(self):
+        result = self.run_guard({"androidx": PASSING, "composepdf": PRE_PDF_PASSING})
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_rejects_skipped_or_failed_androidx_pdf_case_with_case_name(self):
+        for outcome in ("skipped", "failure"):
+            with self.subTest(outcome=outcome):
+                case = PDF_CASES[0]
+                report = PASSING.replace(
+                    f'<testcase name="{case}" classname="im.commonplace.reader.reader.pdf.PdfProofTest"/>',
+                    f'<testcase name="{case}" classname="im.commonplace.reader.reader.pdf.PdfProofTest"><{outcome}/></testcase>')
+                result = self.run_guard({"androidx": report, "composepdf": PASSING})
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn(case, result.stderr)
+                self.assertIn("PDF", result.stderr)
 
     def test_rejects_malformed_xml(self):
         self.assertNotEqual(self.run_guard({"androidx": "broken", "composepdf": PASSING}).returncode, 0)

@@ -22,7 +22,7 @@ class ReaderActivity : FragmentActivity() {
         readerModel = ViewModelProvider(this, object : ViewModelProvider.Factory {
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
                 require(modelClass.isAssignableFrom(ReaderViewModel::class.java))
-                @Suppress("UNCHECKED_CAST") return ReaderViewModel(container.readerRepository) as T
+                @Suppress("UNCHECKED_CAST") return ReaderViewModel(container.readerRepository, BuildConfig.PDF_ENGINE_ID.takeIf { it.isNotBlank() }) as T
             }
         })[ReaderViewModel::class.java]
         openIntent(intent)

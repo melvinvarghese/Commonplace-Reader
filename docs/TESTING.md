@@ -2,7 +2,7 @@
 
 ## Safe import proof
 
-Both PDF-candidate flavors use the same importer and original synthetic documents. Imports use Android's `ACTION_OPEN_DOCUMENT` picker, copy to a random app-private staging file, hash while copying, validate the copy, then place the complete asset before registering its Room source. The original provider file is never opened for writing. Exact duplicates retain one source and offer **Open existing book**: EPUB opens in the native reader; PDF opens source details because PDF reading (Task 5) has not started.
+Both PDF-candidate flavors use the same importer and original synthetic documents. Imports use Android's `ACTION_OPEN_DOCUMENT` picker, copy to a random app-private staging file, hash while copying, validate the copy, then place the complete asset before registering its Room source. The original provider file is never opened for writing. Exact duplicates retain one source and offer **Open existing book**: EPUB opens in the native reader; PDF enters the experimental comparison only in the `androidx` flavor. The other flavor retains explicit source details until Task 6.
 
 The proof limits are 256 MiB per import, 10,000 ZIP members, 64 MiB per expanded member and 512 MiB total declared/actual ZIP expansion. Remaining free space is rechecked before every copied block, with a 1 MiB reserve; real write/sync failures still abort. ZIP paths, duplicate names, lengths and CRCs are checked without extraction. EPUB structural XML has an additional 2 MiB/document, 128-depth and 100,000-token cap. DTDs/entities are refused. Only local XHTML reading-order resources are accepted by this proof. These intentionally conservative checks are not a complete EPUB conformance certification.
 
@@ -36,7 +36,27 @@ python3 tools/verify_android_test_results.py \
 
 CI additionally runs `python3 tools/run_import_recovery.py` on each disposable emulator after the normal suite. A guarded instrumentation probe writes a nonempty staging file and blocks; the runner requires its private readiness marker and live PID before force-stopping the real target process, confirms the PID disappears, then runs a fresh-process verification. The new partial source must be absent, staging/orphans removed, and a preexisting source annotation retained. Both flavors must report exactly one passing recovery verification; logs are under `build/reports/import-recovery`. The guarded stage methods return without staging during the normal suite; those two normal-suite results are not the recovery evidence. The probe refuses preexisting unrelated staging/orphan files and is not a tool to run on personal data.
 
-The result guard rejects missing named shell, repository, importer and real-provider cases, and any reported failure/error/skip. CI retains actual XML and failure diagnostics. API 28/API 37.0 remain the approved proof matrix, not a public supported-device promise. Physical devices, SAF picker automation, accessibility/TalkBack and actual cloud/document-provider grant UI flows are not established by host tests.
+The result guard rejects missing named shell, repository, importer, real-provider and EPUB cases, plus all seven named PDF safety/proof cases in the AndroidX flavor, and any reported failure/error/skip. It does not require second-candidate PDF cases before Task 6. CI retains actual XML and failure diagnostics. An executed assertion of Unsupported or an asserted geometric limitation is **not** a native feature pass. API 28/API 37.0 remain the approved proof matrix, not a public supported-device promise. Physical devices, SAF picker automation, accessibility/TalkBack and actual cloud/document-provider grant UI flows are not established by host tests.
+
+## Task 5 AndroidX PDF comparison
+
+`PdfProofTest` exists only in `androidTestAndroidx`; the shared assertions are engine-neutral and reusable for the later independent candidate. `PdfLocationsTest` checks the flavor-local, engine-scoped original-space storage envelope and opaque native JSON; `ReaderViewModelTest` rejects EPUB/foreign-candidate PDF events. `VerifiedSourceTest` exercises streamed byte verification, canonical app-owned paths, absence/replacement and cancellation. The existing pinned `pdf-viewer-fragment:1.0.0-beta01` dependency is reused; no PDF parser, OCR provider or `pdf-ink` is added.
+
+For a focused run on **each** disposable API 28 and API 37 emulator:
+
+```sh
+adb shell getprop ro.build.version.sdk
+adb shell getprop | grep -i extension
+./gradlew --no-daemon --dependency-verification=strict \
+  :app:connectedAndroidxDebugAndroidTest \
+  -Pandroid.testInstrumentationRunnerArguments.class=im.commonplace.reader.reader.pdf.PdfProofTest
+```
+
+The result guard is intended for the **full** suite, not just this focused class. PDF tests log the actual API, S-extension and source checksum. The full-viewer route requires API 31 and extension 13, while minSdk stays 28; API 28 must execute and assert Unsupported with its reason, never silently skip. Beta01's metadata/backported rendering is not confused with the guide's full-viewer requirement. API 37 is not assumed to have a particular extension until measured.
+
+Cases cover real native document rendering/page navigation/zoom, recreation with old native-view detachment, native document search/selection for multilingual/repeated strings, zero-based pages, explicit geometry refusal at 1×/2×, exact `No selectable text available` without diagnosing a scan, malformed/encrypted handling, and changed-byte association safety. The replacement test deliberately seeds a synthetic saved location plus quotation/reflection/source annotation/bookmark/progress; it proves storage retention and no native attachment after byte mismatch, **not** native capture success. Numeric PDF/overlay assertions remain 1 point/2 dp; no geometric pass is inferred from the deliberate refusal case.
+
+Original crop/rotation mapping, saved-selection/highlight force-stop restoration, physical/TalkBack, StrictMode/profiler and the three-cycle 100 MiB performance budget remain unproved/not run. The one-page large fixture cannot measure 20-page navigation. These are candidate-acceptance gaps, recorded as rejection rather than relaxed thresholds. Existing EPUB process-death probes remain separate and cannot establish PDF recovery. See [the live evidence ledger](READER_PROOF.md) for actual commit/run results; a build or an Unsupported assertion cannot select the candidate.
 
 ## Task 4 EPUB reader proof — verified, bounded scope
 
@@ -50,7 +70,7 @@ The CI host XML has 76 tests per flavor (152 total), with zero failures, errors 
 
 The bounded runtime offline checks passed: local rendering, authored-publication-script removal, unsafe-URL handling and unknown-host denial at a controlled endpoint. The external-anchor case displays a confirmation prompt, then cancels and confirms zero endpoint requests; browser handoff after consent was not exercised. The app requests no `INTERNET` permission and adds no toolkit bridge, but the Readium JavaScript bridge exists and trusted Readium JavaScript is not disabled. Do not generalize these checks to universal offline behavior or claim JavaScript is disabled.
 
-Automated controls verified system text scale 2.0, dark theme, landscape, and 48 dp control width/height. These do not establish broad WebView body typography behavior. Spoken TalkBack checks, tablet layout and physical-device testing, and actual SAF picker/cloud-provider grant UI flows were not run or established. API 28/API 37.0 are the proof matrix, not a public device-support promise. Task 5 has not started; PDF reading remains unimplemented.
+Automated controls verified system text scale 2.0, dark theme, landscape, and 48 dp control width/height. These do not establish broad WebView body typography behavior. Spoken TalkBack checks, tablet layout and physical-device testing, and actual SAF picker/cloud-provider grant UI flows were not run or established. API 28/API 37.0 are the proof matrix, not a public device-support promise. The AndroidX PDF comparison above is a separate task and is not accepted on the strength of this EPUB evidence.
 
 ## Original shared fixtures
 

@@ -30,7 +30,10 @@ import org.json.JSONObject
 @Composable
 fun ReaderScreen(activity: FragmentActivity, model: ReaderViewModel, preferences: ReaderPreferences, dark: Boolean, onLibrary: () -> Unit) {
     val state by model.uiState.collectAsStateWithLifecycle()
-    key(state.source?.id) { ReaderSourceScreen(activity, model, state, preferences, dark, onLibrary) }
+    key(state.source?.id) {
+        if (state.source?.format == DocumentFormat.PDF) im.commonplace.reader.reader.pdf.PdfReaderScreen(activity, model, state, onLibrary)
+        else ReaderSourceScreen(activity, model, state, preferences, dark, onLibrary)
+    }
 }
 
 @Composable

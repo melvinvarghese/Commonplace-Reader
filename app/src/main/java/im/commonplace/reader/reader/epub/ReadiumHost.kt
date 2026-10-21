@@ -10,9 +10,7 @@ import androidx.fragment.app.FragmentActivity
 import im.commonplace.reader.data.EntryEntity
 import im.commonplace.reader.data.SourceEntity
 import im.commonplace.reader.reader.*
-import java.io.File
 import java.io.IOException
-import java.security.MessageDigest
 import java.util.zip.ZipFile
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
@@ -72,16 +70,9 @@ class ReadiumHost(
             var stage = "verify-asset"
             try {
                 withContext(Dispatchers.IO) {
-                    val assetFile = File(activity.filesDir, source.assetPath).canonicalFile
-                    val assets = File(activity.filesDir, "imports/assets").canonicalFile
-                    require(source.format == DocumentFormat.EPUB && assetFile.parentFile == assets && assetFile.name == "${source.id}.epub")
-                    if (!assetFile.isFile) throw ReaderOpenFailure("The document is missing. Your writing is retained.")
-                    val digest = MessageDigest.getInstance("SHA-256")
-                    assetFile.inputStream().use { input ->
-                        val buffer = ByteArray(64 * 1024)
-                        while (true) { ensureActive(); val count = input.read(buffer); if (count < 0) break; digest.update(buffer, 0, count) }
-                    }
-                    if (digest.digest().joinToString("") { "%02x".format(it) } != source.checksum) throw ReaderOpenFailure("Document bytes changed. Saved locations are unresolved; your writing is retained.")
+                    require(source.format == DocumentFormat.EPUB)
+                    val assetFile = try { verifySourceFile(activity.filesDir, source) }
+                    catch (failure: VerifiedSourceException) { throw ReaderOpenFailure(failure.userMessage, failure) }
                     ZipFile(assetFile).use { zip ->
                         // Import already rejects encryption. Recheck at the reader boundary too.
                         if (zip.getEntry("META-INF/encryption.xml") != null) throw UnsupportedEpub("Encrypted EPUB is not supported by this proof.")

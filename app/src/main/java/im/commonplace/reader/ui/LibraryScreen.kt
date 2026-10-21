@@ -149,7 +149,8 @@ fun LibraryScreen(contentPadding: PaddingValues) {
         )
     }
     selected?.let { source ->
-        if (source.availability == SourceAvailability.AVAILABLE && source.format == im.commonplace.reader.reader.DocumentFormat.EPUB) {
+        if (source.availability == SourceAvailability.AVAILABLE &&
+            (source.format == im.commonplace.reader.reader.DocumentFormat.EPUB || im.commonplace.reader.BuildConfig.PDF_ENGINE_ID.isNotBlank())) {
             androidx.compose.runtime.LaunchedEffect(source.id) {
                 viewModel.closeSource()
                 context.startActivity(android.content.Intent(context, im.commonplace.reader.ReaderActivity::class.java).putExtra("sourceId", source.id))
@@ -158,7 +159,7 @@ fun LibraryScreen(contentPadding: PaddingValues) {
             title = { Text(source.title) },
             text = { Text(if (source.availability == SourceAvailability.MISSING)
                 "The app-owned document is missing. Source metadata and writing are retained. Reattachment is not implemented yet."
-                else "PDF reading is not implemented in this EPUB proof.") },
+                else "This PDF comparison is not implemented yet.") },
             confirmButton = { TextButton(onClick = viewModel::closeSource) { Text("Close") } })
     }
 }

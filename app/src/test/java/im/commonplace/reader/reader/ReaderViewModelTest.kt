@@ -34,6 +34,22 @@ class ReaderViewModelTest {
     private fun open(id: String = a) { model.open(id); scheduler.runCurrent(); model.onReaderEvent(id, ReaderEvent.Opened(id, available)) }
     private fun select() { model.onReaderEvent(a, ReaderEvent.SelectionChanged(a, capture)) }
 
+    @Test fun pdfCandidateOpensWithoutPromotingAnotherEnginesLocations() {
+        persistence.sources[a] = source(a).copy(format = DocumentFormat.PDF)
+        model = ReaderViewModel(persistence, pdfEngineId = "androidx-pdf")
+        store.put("pdf", model)
+        model.open(a); scheduler.runCurrent()
+        assertEquals(ReaderPhase.Opening, model.uiState.value.phase)
+        val pdf = SavedLocation(1, DocumentFormat.PDF, "androidx-pdf", """{"pageIndex":0,"pageBox":[0,0,612,792],"rotationDegrees":0,"coordinateSpace":"unrotated-pdf-points"}""")
+        model.onReaderEvent(a, ReaderEvent.PositionChanged(a, pdf))
+        assertEquals(pdf, model.uiState.value.currentLocation)
+        model.onReaderEvent(a, ReaderEvent.PositionChanged(a, pdf.copy(engineId = "nucleus-composepdf")))
+        assertEquals(pdf, model.uiState.value.currentLocation)
+        model.onReaderEvent(a, ReaderEvent.PositionChanged(a, location))
+        assertEquals(pdf, model.uiState.value.currentLocation)
+        model.onReaderEvent(a, ReaderEvent.SelectionChanged(a, Capture("wrong engine", pdf.copy(engineId = "nucleus-composepdf"))))
+        assertNull(model.uiState.value.selection)
+    }
     @Test fun savedAcknowledgementWaitsForCommitAndClearsDraftOnlyOnSuccess() {
         open(); select(); model.updateDraft("réflexion", 42)
         scheduler.advanceTimeBy(300); scheduler.runCurrent()

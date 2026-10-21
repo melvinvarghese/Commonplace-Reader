@@ -34,7 +34,7 @@ class PdfProofTest {
     @get:Rule val compose = createEmptyComposeRule()
     private val context get() = ApplicationProvider.getApplicationContext<Context>()
     private val container get() = (context as CommonplaceApplication).container
-    private val supported get() = Build.VERSION.SDK_INT >= 31 && SdkExtensions.getExtensionVersion(31) >= 13
+    private val supported get() = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && SdkExtensions.getExtensionVersion(Build.VERSION_CODES.S) >= 13
     private fun state(scenario: ActivityScenario<ReaderActivity>): ReaderUiState {
         var result: ReaderUiState? = null
         scenario.onActivity { result = ViewModelProvider(it)[ReaderViewModel::class.java].uiState.value }
@@ -69,7 +69,7 @@ class PdfProofTest {
         val source = source(name)
         ActivityScenario.launch<ReaderActivity>(Intent(context, ReaderActivity::class.java).putExtra("sourceId", source.id)).use { scenario ->
             await { state(scenario).phase != ReaderPhase.Opening }
-            Log.i("PdfProof", "api=${Build.VERSION.SDK_INT}; extensionS=${if (Build.VERSION.SDK_INT >= 30) SdkExtensions.getExtensionVersion(31) else 0}; fixture=$name; sha256=${source.checksum}")
+            Log.i("PdfProof", "api=${Build.VERSION.SDK_INT}; extensionS=${if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) SdkExtensions.getExtensionVersion(Build.VERSION_CODES.S) else 0}; fixture=$name; sha256=${source.checksum}")
             if (!supported) {
                 assertEquals(ReaderPhase.Unsupported, state(scenario).phase)
                 assertTrue(state(scenario).message.orEmpty().contains("API 31 and SDK extension 13"))
@@ -79,6 +79,7 @@ class PdfProofTest {
         }
     }
     @Test fun renderingNavigationZoomAndRecreationOrExplicitUnsupported() = withPdf("repeated-two-page.pdf") { _, scenario ->
+        assertEquals(android.content.pm.PackageManager.PERMISSION_DENIED, context.checkSelfPermission(android.Manifest.permission.INTERNET))
         val view = native(scenario)
         assertEquals(2, view.pdfDocument!!.pageCount)
         scenario.onActivity { view.scrollToPage(1); view.zoom = 2f }
@@ -120,6 +121,32 @@ class PdfProofTest {
         native(scenario)
         await { state(scenario).capabilities.select == CapabilityStatus.Unavailable("No selectable text available") }
         PdfProofAssertions.unavailable(state(scenario).capabilities.select, "No selectable text available")
+    }
+    @Test fun replacedBytesKeepWritingButNeverApplySyntheticSavedCoordinates() {
+        // Storage-safety evidence, explicitly NOT a claim of native selection capture.
+        val source = source("ordinary-text.pdf")
+        val file = File(context.filesDir, source.assetPath)
+        val original = file.readBytes()
+        val location = SavedLocation(1, DocumentFormat.PDF, "androidx-pdf", """{"pageIndex":0,"pageBox":[0,0,612,792],"rotationDegrees":0,"coordinateSpace":"unrotated-pdf-points","quads":[[72,698,352.295,698,352.295,712,72,712]]}""")
+        runBlocking {
+            container.readerRepository.saveCapture(source.id, Capture("A quiet synthetic page for local reader testing.", location), "Keep café reflection", null)
+            container.readerRepository.saveSourceAnnotation(source.id, "Independent source annotation")
+            container.readerRepository.addBookmark(source.id, location.copy(payloadJson = location.payloadJson.replace("\"pageIndex\":0", "\"pageIndex\":1")))
+            container.readerRepository.saveProgress(source.id, location)
+        }
+        try {
+            InstrumentationRegistry.getInstrumentation().context.assets.open("fixtures/repeated-two-page.pdf").use { input -> file.outputStream().use(input::copyTo) }
+            ActivityScenario.launch<ReaderActivity>(Intent(context, ReaderActivity::class.java).putExtra("sourceId", source.id)).use { scenario ->
+                await { state(scenario).phase == ReaderPhase.Error && state(scenario).entries.size >= 2 }
+                val saved = state(scenario)
+                assertEquals("Document bytes changed. Saved locations are unresolved; your writing is retained.", saved.message)
+                assertTrue(saved.entries.any { it.quotation == "A quiet synthetic page for local reader testing." && it.body == "Keep café reflection" })
+                assertTrue(saved.entries.any { it.body == "Independent source annotation" && it.location == null })
+                assertEquals(1, saved.bookmarks.single().location.payloadJson.let { org.json.JSONObject(it).getInt("pageIndex") })
+                assertEquals(location, runBlocking { container.readerRepository.getProgress(source.id) })
+                scenario.onActivity { assertTrue(it.supportFragmentManager.fragments.none { f -> f is PdfViewerFragment }) }
+            }
+        } finally { file.writeBytes(original) }
     }
     @Test fun malformedAndEncryptedDoNotCrashOrExplicitUnsupported() {
         for (name in listOf("malformed.pdf", "encrypted.pdf")) withPdf(name) { _, scenario ->

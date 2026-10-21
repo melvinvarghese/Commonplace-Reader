@@ -66,6 +66,16 @@ READER_CASES = {
     'nativeContainerSurvivesResizePanelTransitionsAndTeardown',
 }
 
+PDF_CASES = {
+    'renderingNavigationZoomAndRecreationOrExplicitUnsupported',
+    'exactNativeMultilingualSearchAndSelectionOrExplicitUnsupported',
+    'repeatedTextSearchUsesZeroBasedNativePagesOrExplicitUnsupported',
+    'croppedRotatedGeometryIsNotInventedOrExplicitUnsupported',
+    'noTextIsExactAndNotDiagnosedAsScanOrExplicitUnsupported',
+    'replacedBytesKeepWritingButNeverApplySyntheticSavedCoordinates',
+    'malformedAndEncryptedDoNotCrashOrExplicitUnsupported',
+}
+
 def verify(root):
     for flavor in ("androidx", "composepdf"):
         reports = sorted((root / flavor).rglob("TEST-*.xml"))
@@ -76,8 +86,16 @@ def verify(root):
         import_passed = set()
         provider_passed = set()
         reader_passed = set()
+        pdf_passed = set()
         for report in reports:
             tree = ET.parse(report).getroot()
+            if flavor == "androidx":
+                for testcase in tree.iter("testcase"):
+                    if testcase.get("classname") == "im.commonplace.reader.reader.pdf.PdfProofTest":
+                        name = testcase.get("name")
+                        if any(child.tag in ("failure", "error", "skipped") for child in testcase.iter()):
+                            raise ValueError(f"{flavor}: PDF case {name} failed, errored or skipped")
+                        pdf_passed.add(name)
             for element in tree.iter():
                 if element.tag in ("failure", "error", "skipped"):
                     raise ValueError(f"{flavor}: failed, errored or skipped test")
@@ -105,7 +123,12 @@ def verify(root):
             missing = expected - executed
             if missing:
                 raise ValueError(f"{flavor}: {label} cases did not execute: {sorted(missing)}")
-        print(f"{flavor}: shell, {len(REPOSITORY_CASES)} repository, {len(IMPORT_CASES)} import and {len(PROVIDER_CASES)} provider and {len(READER_CASES)} native reader cases executed and passed")
+        if flavor == "androidx":
+            missing = PDF_CASES - pdf_passed
+            if missing:
+                raise ValueError(f"{flavor}: PDF cases did not execute: {sorted(missing)}")
+        pdf_summary = f" and {len(PDF_CASES)} PDF proof cases executed" if flavor == "androidx" else ""
+        print(f"{flavor}: shell, {len(REPOSITORY_CASES)} repository, {len(IMPORT_CASES)} import and {len(PROVIDER_CASES)} provider and {len(READER_CASES)} native reader cases executed and passed{pdf_summary}")
 
 
 if __name__ == "__main__":

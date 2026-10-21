@@ -39,7 +39,7 @@ data class ReaderUiState(
     val bookmarks: List<BookmarkEntity> = emptyList(),
     val message: String? = null,
 )
-class ReaderViewModel(private val repository: ReaderStore) : ViewModel() {
+class ReaderViewModel(private val repository: ReaderStore, private val pdfEngineId: String? = null) : ViewModel() {
     private val state = MutableStateFlow(ReaderUiState())
     val uiState: StateFlow<ReaderUiState> = state.asStateFlow()
     private var activeId: String? = null
@@ -74,7 +74,7 @@ class ReaderViewModel(private val repository: ReaderStore) : ViewModel() {
                     source = source,
                     phase = when {
                         source.availability != SourceAvailability.AVAILABLE -> ReaderPhase.Error
-                        source.format != DocumentFormat.EPUB -> ReaderPhase.Unsupported
+                        source.format == DocumentFormat.PDF && pdfEngineId == null -> ReaderPhase.Unsupported
                         else -> ReaderPhase.Opening
                     },
                     initialLocation = progress, currentLocation = progress,
@@ -82,7 +82,7 @@ class ReaderViewModel(private val repository: ReaderStore) : ViewModel() {
                     draftSaved = draft != null, bookmarks = bookmarks,
                     message = when {
                         source.availability != SourceAvailability.AVAILABLE -> "The document is missing. Your writing is retained."
-                        source.format != DocumentFormat.EPUB -> "PDF reading is not implemented yet. Your imported file is retained."
+                        source.format == DocumentFormat.PDF && pdfEngineId == null -> "PDF reading is not implemented yet. Your imported file is retained."
                         else -> null
                     },
                 )
@@ -100,7 +100,7 @@ class ReaderViewModel(private val repository: ReaderStore) : ViewModel() {
     fun onReaderEvent(sourceId: String, event: ReaderEvent) {
         if (sourceId != activeId || event.sourceId != sourceId) return
         when (event) {
-            is ReaderEvent.Opened -> state.update { it.copy(phase = if (event.capabilities.render is CapabilityStatus.Unavailable) ReaderPhase.Unsupported else ReaderPhase.Ready, capabilities = event.capabilities) }
+            is ReaderEvent.Opened -> state.update { it.copy(phase = if (event.capabilities.render is CapabilityStatus.Unavailable) ReaderPhase.Unsupported else ReaderPhase.Ready, capabilities = event.capabilities, message = (event.capabilities.render as? CapabilityStatus.Unavailable)?.reason ?: it.message) }
             is ReaderEvent.Failed -> state.update { it.copy(phase = ReaderPhase.Error, message = event.userMessage) }
             is ReaderEvent.PositionChanged -> {
                 if (!compatible(event.location)) { state.update { it.copy(message = "This saved location is unresolved.") }; return }
@@ -218,6 +218,10 @@ class ReaderViewModel(private val repository: ReaderStore) : ViewModel() {
     }
     private fun compatible(location: SavedLocation): Boolean = try {
         location.validate()
-        location.format == DocumentFormat.EPUB && location.engineId == "readium"
+        when (state.value.source?.format) {
+            DocumentFormat.EPUB -> location.format == DocumentFormat.EPUB && location.engineId == "readium"
+            DocumentFormat.PDF -> pdfEngineId != null && location.format == DocumentFormat.PDF && location.engineId == pdfEngineId
+            null -> false
+        }
     } catch (_: IllegalArgumentException) { false }
 }
