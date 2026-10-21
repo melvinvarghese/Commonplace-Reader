@@ -180,11 +180,20 @@ class ReadiumProofTest {
         val automation = InstrumentationRegistry.getInstrumentation().uiAutomation
         fun shell(command: String) = automation.executeShellCommand(command).use { descriptor -> android.os.ParcelFileDescriptor.AutoCloseInputStream(descriptor).use { it.readBytes().toString(Charsets.UTF_8) } }
         val originalScale = shell("settings get system font_scale").trim().takeIf { it.toFloatOrNull() != null } ?: "1.0"
+        var originalOrientation = Configuration.ORIENTATION_UNDEFINED
+        var originalRequest = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+        scenario.onActivity { originalOrientation = it.resources.configuration.orientation; originalRequest = it.requestedOrientation }
+        fun awaitConfiguration(scale: Float, orientation: Int) = await {
+            var matches = false
+            scenario.onActivity { matches = kotlin.math.abs(it.resources.configuration.fontScale - scale) < 0.01f && it.resources.configuration.orientation == orientation }
+            matches
+        }
         try {
             navigator(scenario)
             shell("settings put system font_scale 2.0")
             scenario.onActivity { it.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE }
-            scenario.recreate()
+            // These real configuration changes already recreate the Activity.
+            awaitConfiguration(2f, Configuration.ORIENTATION_LANDSCAPE)
             navigator(scenario); waitForWeb(scenario, "one.xhtml")
             scenario.onActivity { assertEquals(2f, it.resources.configuration.fontScale, 0.01f); assertEquals(Configuration.ORIENTATION_LANDSCAPE, it.resources.configuration.orientation) }
             for (label in listOf("Library", "Keep selected passage", "Bookmark", "Search in book", "Saved items", "Dark reading")) {
@@ -200,7 +209,11 @@ class ReadiumProofTest {
             java.io.FileOutputStream(File(context.filesDir, "reader-proof-200-landscape.png")).use { image.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
             image.recycle()
             compose.onNodeWithText("Dark reading").performScrollTo().performClick()
-        } finally { shell("settings put system font_scale $originalScale"); scenario.onActivity { it.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED } }
+        } finally {
+            shell("settings put system font_scale $originalScale")
+            scenario.onActivity { it.requestedOrientation = originalRequest }
+            awaitConfiguration(originalScale.toFloat(), originalOrientation)
+        }
     }
 
     @Test fun malformedDrmAndFixedLayoutReportExplicitErrorOrUnsupported() {
@@ -272,7 +285,14 @@ class ReadiumProofTest {
         }
         fun waitForWeb(scenario: ActivityScenario<ReaderActivity>, suffix: String) {
             val marker = JSONObject.quote(if (suffix.endsWith("one.xhtml")) ReaderProofFixture.MULTILINGUAL else "A different place for a durable bookmark.")
-            await { script(scenario, suffix, "document.readyState == 'complete' && !!document.body && typeof readium !== 'undefined' && typeof readium.getCurrentSelection === 'function' && document.body.textContent.indexOf($marker) >= 0").trim('"') == "true" }
+            await {
+                var locator: Locator? = null
+                scenario.onActivity { locator = it.supportFragmentManager.fragments.filterIsInstance<EpubNavigatorFragment>().singleOrNull()?.currentLocator?.value }
+                // DOM readiness precedes asynchronous SDK position/title enrichment.
+                // Exact selection snapshots must sample the completed native locator.
+                locator?.href?.toString()?.endsWith(suffix) == true && locator?.locations?.position != null &&
+                    script(scenario, suffix, "document.readyState == 'complete' && !!document.body && typeof readium !== 'undefined' && typeof readium.getCurrentSelection === 'function' && document.body.textContent.indexOf($marker) >= 0").trim('"') == "true"
+            }
         }
         fun script(scenario: ActivityScenario<ReaderActivity>, suffix: String, js: String): String {
             var result = "null"
