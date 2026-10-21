@@ -12,6 +12,8 @@ Not implemented yet: document import, EPUB/PDF reading, durable notes/highlights
 
 The earlier multiline diagnostic-wrapper failure is corrected in the recorded experiment. Increasing only API 37 RAM to 4096M does not resolve the observed graphics/service failure; this rejects the proposed RAM-only fix, not every possible memory issue. The experimental workflow changes are restored to baseline after the single authorized corrected run; no rerun was started. Generic profile, userdata, GPU mode, image/toolchain/dependency selections and test assertions were not changed. Task 2 remains paused.
 
+The single [setup-only diagnostic](https://github.com/melvinvarghese/Commonplace-Reader/actions/runs/39535057134) then directly confirmed that the emulator runner resolves `/usr/local/lib/android/sdk/cmdline-tools/latest/bin/avdmanager` from command-line tools **12.0**, and creates outer `test.ini` with **`target=android-0`**, not `android-37.0`. It stopped before emulator boot and all app tests. This confirms the setup discrepancy, not its causal connection to the graphics/service crashes. No fix, pin change or further test run was attempted; the workflow was restored with CI skipped. API 37 remains blocked and Task 2 remains paused.
+
 ## Build
 
 Use JDK 17, Android SDK platform `platforms;android-37.0`, and Build Tools `36.0.0`. Set `ANDROID_HOME` to your SDK location (or use an untracked `local.properties`). The checked-in Gradle 9.7.0 wrapper verifies its distribution checksum.
