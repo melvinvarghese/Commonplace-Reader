@@ -31,6 +31,7 @@ import org.readium.r2.shared.publication.Locator
 import java.io.File
 
 /** Only original disposable fixture bytes; no personal library data. */
+@im.commonplace.reader.notebook.NotebookProof
 @RunWith(AndroidJUnit4::class)
 class NotebookPassageTest {
     @get:Rule val compose=createEmptyComposeRule()
@@ -83,6 +84,7 @@ class NotebookPassageTest {
             assertEquals(ReaderProofFixture.QUOTATION,selection.text.highlight)
             assertTrue(selection.text.before.orEmpty().contains("Second context"))
             assertEquals(secondExact,runBlocking { container.notebookRepository.getEntry(secondId) }!!.location!!.payloadJson)
+            scenario.recreate();assertAt(scenario,"second")
         }
     }
     @Test fun sameSourceNewEntryRequestIsNotIgnored() {
@@ -91,6 +93,26 @@ class NotebookPassageTest {
             scenario.onActivity { it.startActivity(Intent(context,ReaderActivity::class.java).putExtra("entryId",secondId).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)) }
             assertAt(scenario,"second");assertSame(native,navigator(scenario,compose))
             assertEquals(secondExact,runBlocking { container.notebookRepository.getEntry(secondId) }!!.location!!.payloadJson)
+            scenario.recreate();assertAt(scenario,"second")
+        }
+    }
+    @Test fun immediateRecreationAfterAcceptanceRetainsPendingPassage() {
+        launchEntry(secondId).use { scenario ->
+            assertAt(scenario,"second")
+            val first=runBlocking { container.notebookRepository.getEntry(firstId) }!!.location!!
+            go(scenario,navigator(scenario,compose),Locator.fromJSON(JSONObject(first.payloadJson))!!)
+            assertAt(scenario,"first")
+            val native=navigator(scenario,compose)
+            scenario.onActivity {
+                val model=ViewModelProvider(it)[ReaderViewModel::class.java]
+                val target=ReadiumLocations.encode(secondExact)
+                model.openTarget(EntryReaderTarget.Passage(secondId,source.id,target))
+                val state=model.uiState.value;val jump=requireNotNull(state.pendingEntryJump)
+                assertTrue(native.go(Locator.fromJSON(JSONObject(secondExact))!!))
+                model.onEntryCommandAccepted(source.id,jump.requestId,state.readerSession)
+                assertNotNull(model.uiState.value.pendingEntryJump)
+            }
+            scenario.recreate();assertAt(scenario,"second")
         }
     }
     @Test fun recreationDoesNotReplayConsumedJump() {

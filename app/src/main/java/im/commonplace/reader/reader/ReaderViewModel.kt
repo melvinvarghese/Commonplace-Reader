@@ -115,12 +115,16 @@ class ReaderViewModel(private val repository: ReaderStore, private val pdfEngine
             return
         }
         val sourceId=when(target) { is EntryReaderTarget.Passage -> target.sourceId; is EntryReaderTarget.Book -> target.sourceId; else -> return }
-        val jump=if(target is EntryReaderTarget.Passage) EntryJump(++jumpSequence,target.location) else null
+        val jump=if(target is EntryReaderTarget.Passage) EntryJump(++jumpSequence,target.location,target.entryId) else null
         if(activeId==sourceId && state.value.source!=null && state.value.phase!=ReaderPhase.Error) {
             flushProgress()
             state.update { it.copy(pendingEntryJump=jump,currentLocation=if(jump==null) it.currentLocation else null,
                 initialLocation=jump?.location ?: it.initialLocation,message=null) }
         } else openSource(sourceId,jump)
+    }
+    fun onEntryCommandAccepted(sourceId: String,requestId: Long,readerSession: Long) {
+        if(sourceId!=activeId || readerSession!=generation || state.value.pendingEntryJump?.requestId!=requestId) return
+        state.update { it.copy(pendingEntryJump=it.pendingEntryJump?.copy(commandAccepted=true)) }
     }
     fun onEntryNavigationResult(sourceId: String,requestId: Long,readerSession: Long,success: Boolean) {
         if(sourceId!=activeId || readerSession!=generation || state.value.pendingEntryJump?.requestId!=requestId) return

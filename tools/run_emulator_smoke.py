@@ -179,15 +179,13 @@ def run_notebook_instrumentation(flavor):
     source=RESULTS/flavor
     if source.exists(): shutil.rmtree(source)
     identity={'flavor':flavor,'runId':uuid.uuid4().hex,'sourceSha':None,'api':None,'abi':None,'exitCode':1}
-    classes=','.join(('im.commonplace.reader.data.NotebookMigrationTest','im.commonplace.reader.data.NotebookRepositoryTest',
-        'im.commonplace.reader.ui.NotebookTest','im.commonplace.reader.ui.NotebookLayoutTest','im.commonplace.reader.reader.NotebookPassageTest'))
     try:
         identity['sourceSha']=subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip()
         for field,prop in [('api','ro.build.version.sdk'),('abi','ro.product.cpu.abi')]:
             identity[field]=subprocess.check_output(['adb','shell','getprop',prop],text=True).strip()
         print(f'Running independent notebook instrumentation: {flavor}; source={identity["sourceSha"]}; API={identity["api"]}; ABI={identity["abi"]}',flush=True)
         identity['exitCode']=subprocess.run(['./gradlew','--no-daemon','--dependency-verification=strict',
-            f':app:connected{flavor.capitalize()}DebugAndroidTest',f'-Pandroid.testInstrumentationRunnerArguments.class={classes}',
+            f':app:connected{flavor.capitalize()}DebugAndroidTest','-Pandroid.testInstrumentationRunnerArguments.annotation=im.commonplace.reader.notebook.NotebookProof',
             f'-Pandroid.testInstrumentationRunnerArguments.notebookRunId={identity["runId"]}',
             f'-Pandroid.testInstrumentationRunnerArguments.notebookSourceSha={identity["sourceSha"]}']).returncode
     except (OSError,subprocess.SubprocessError) as error:

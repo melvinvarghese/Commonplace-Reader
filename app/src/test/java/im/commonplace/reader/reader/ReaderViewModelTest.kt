@@ -175,6 +175,20 @@ class ReaderViewModelTest {
         assertEquals(capture, model.uiState.value.selection)
     }
     private fun entry(id: String, loc: SavedLocation?) = EntryEntity(id, if (loc == null) EntryKind.ANNOTATION else EntryKind.HIGHLIGHT, a, loc, null, null, if (loc == null) null else "same phrase", "Original book", null, 42, 1, 1)
+    @Test fun commandAcceptanceKeepsJumpPendingUntilNativeArrival() {
+        open();persistence.progress[a]=location
+        val target=location.copy(payloadJson="""{"href":"next.xhtml","type":"application/xhtml+xml"}""")
+        model.openTarget(EntryReaderTarget.Passage("entry",a,target));scheduler.runCurrent()
+        val ui=model.uiState.value;val jump=requireNotNull(ui.pendingEntryJump)
+        model.onEntryCommandAccepted(a,jump.requestId,ui.readerSession)
+        assertNotNull(model.uiState.value.pendingEntryJump)
+        model.onReaderEvent(a,ReaderEvent.PositionChanged(a,location),ui.readerSession)
+        model.flushProgress();scheduler.advanceTimeBy(1000);scheduler.runCurrent()
+        assertNull(model.uiState.value.currentLocation);assertEquals(location,persistence.progress[a])
+        model.onEntryNavigationResult(a,jump.requestId,ui.readerSession,true)
+        model.onReaderEvent(a,ReaderEvent.PositionChanged(a,target),ui.readerSession)
+        assertNull(model.uiState.value.pendingEntryJump);assertEquals(target,model.uiState.value.currentLocation)
+    }
     @Test fun sameSourceNewEntryRequestIsNotIgnored() {
         open();model.openTarget(EntryReaderTarget.Passage("first",a,location));scheduler.runCurrent()
         val first=requireNotNull(model.uiState.value.pendingEntryJump)

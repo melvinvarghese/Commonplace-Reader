@@ -15,7 +15,7 @@ sealed interface EntryReaderTarget {
     data class Book(val entryId: String,val sourceId: String): EntryReaderTarget
     data class Unavailable(val reason: String,val entry: EntryEntity?=null): EntryReaderTarget
 }
-data class EntryJump(val requestId: Long,val location: SavedLocation)
+data class EntryJump(val requestId: Long,val location: SavedLocation,val entryId: String,val commandAccepted: Boolean=false)
 class EntryReaderTargetResolver(private val notebook: NotebookStore,private val reader: ReaderStore,private val verifyFile: suspend (SourceEntity) -> File) {
     suspend fun resolveEntryReaderTarget(entryId: String): EntryReaderTarget {
         var entry: EntryEntity?=null

@@ -7,6 +7,7 @@ import androidx.sqlite.db.SupportSQLiteOpenHelper
 import androidx.sqlite.db.framework.FrameworkSQLiteOpenHelperFactory
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
 import java.util.UUID
 import org.json.JSONObject
 import org.junit.After
@@ -15,6 +16,7 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 
+@im.commonplace.reader.notebook.NotebookProof
 @RunWith(AndroidJUnit4::class)
 class NotebookMigrationTest {
     private lateinit var context: Context
@@ -33,7 +35,7 @@ class NotebookMigrationTest {
     private fun seedV1(): Map<String, List<List<String?>>> {
         val schemaPath = "im.commonplace.reader.data.CommonplaceDatabase/1.json"
         val stream = javaClass.classLoader!!.getResourceAsStream(schemaPath)
-            ?: context.assets.open(schemaPath)
+            ?: InstrumentationRegistry.getInstrumentation().context.assets.open(schemaPath)
         val schema = stream.bufferedReader().use { JSONObject(it.readText()).getJSONObject("database") }
         val helper = FrameworkSQLiteOpenHelperFactory().create(
             SupportSQLiteOpenHelper.Configuration.builder(context).name(name)

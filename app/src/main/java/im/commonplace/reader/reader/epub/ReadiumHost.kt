@@ -59,6 +59,7 @@ class ReadiumHost(
     private var highlights = emptyList<EntryEntity>()
     private var rendered = false
     private var selected = false
+    private var lastNativeLocator: Locator? = null
     private val readyState = MutableStateFlow(false)
     val ready: StateFlow<Boolean> = readyState.asStateFlow()
 
@@ -134,10 +135,15 @@ class ReadiumHost(
                         override fun onResourceLoadFailed(href: Url, error: ReadError) { if (!closed) event(ReaderEvent.Failed(source.id, "This EPUB resource could not be rendered safely. Your writing is retained.")) }
                     },
                     paginationListener = object : EpubNavigatorFragment.PaginationListener {
+                        override fun onPageChanged(pageIndex: Int,totalPages: Int,locator: Locator) {
+                            if(closed) return
+                            lastNativeLocator=locator
+                            readyState.value=rendered
+                        }
                         override fun onPageLoaded() {
                             if (closed) return
                             rendered = true
-                            readyState.value = true
+                            readyState.value = lastNativeLocator!=null
                             emitCapabilities()
                             scope.launch { applyHighlights() }
                         }
@@ -214,14 +220,26 @@ class ReadiumHost(
             if (navigator?.go(decode(location)) != true) notice("This saved location is unresolved.")
         } catch (_: IllegalArgumentException) { notice("This saved location is unresolved.") }
     }
-    fun goToEntry(location: SavedLocation): Boolean {
-        if(closed || !readyState.value) return false
-        return try { navigator?.go(decode(location))==true } catch(_: Exception) { false }
-    }
-    fun publishCurrentPosition() {
-        if(closed || !readyState.value) return
-        // A real navigator snapshot, never the requested locator synthesized as progress.
-        navigator?.currentLocator?.value?.let { event(ReaderEvent.PositionChanged(source.id,ReadiumLocations.encode(it.toJSON().toString()))) }
+    suspend fun goToEntry(entryId: String,location: SavedLocation,onAccepted: () -> Unit): SavedLocation? {
+        if(closed || !readyState.value) return null
+        val native=navigator ?: return null
+        try {
+            val target=decode(location)
+            // Pinned Readium resolves each decoration's DOM Range using its locator,
+            // including quotation context. Read that exact range, not a guessed page
+            // or another occurrence of the quotation. No document/selection mutation.
+            val visible="""(function(){try{var d=readium.getDecorations('commonplace-highlights').items.find(function(x){return x.decoration.id===${JSONObject.quote(entryId)};});if(!d)return false;var r=Array.from(d.range.getClientRects()).find(function(x){return x.width>0&&x.height>0;});return !!r&&r.left>=0&&r.top>=0&&r.right<=innerWidth&&r.bottom<=innerHeight;}catch(e){return false;}})()"""
+            val alreadyVisible=native.evaluateJavascript(visible)=="true"
+            val beforeJump=lastNativeLocator?.let { ReadiumLocations.encode(it.toJSON().toString()) }
+            if(!native.go(target,animated=false)) return null
+            onAccepted()
+            return awaitEntryArrival(
+                isTargetStartVisible={ !closed && navigator===native && native.evaluateJavascript(visible)=="true" },
+                freshVisibleLocation={ lastNativeLocator?.takeIf { it.href==target.href }?.let { ReadiumLocations.encode(it.toJSON().toString()) } },
+                excludedPreJumpLocation=if(alreadyVisible) null else beforeJump,
+            )
+        } catch(cancelled: CancellationException) { throw cancelled }
+        catch(_: Exception) { return null }
     }
     suspend fun search(query: String): List<SavedLocation> {
         val book = publication ?: return emptyList()

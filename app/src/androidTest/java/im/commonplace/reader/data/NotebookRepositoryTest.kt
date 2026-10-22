@@ -19,6 +19,7 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 
+@im.commonplace.reader.notebook.NotebookProof
 @RunWith(AndroidJUnit4::class)
 class NotebookRepositoryTest {
     private lateinit var context: Context

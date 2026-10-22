@@ -192,7 +192,11 @@ class NotebookViewModel(private val store: NotebookStore) : ViewModel() {
         } else mutable.update { it.copy(leavePrompt=true) }
     }
     fun stayInEditor() { mutable.update { it.copy(leavePrompt=false) } }
-    fun dismissResumeOffer() { mutable.update { it.copy(resumeOffer=null) } }
+    fun dismissResumeOffer() = action {
+        val offered=state.value.resumeOffer
+        val saved=if(offered?.isNew==false) store.getEntry(offered.targetId) else null
+        mutable.update { it.copy(resumeOffer=null,detail=saved ?: it.detail) }
+    }
     private fun action(block: suspend () -> Unit) {
         if(state.value.busy) return
         mutable.update { it.copy(busy=true) }

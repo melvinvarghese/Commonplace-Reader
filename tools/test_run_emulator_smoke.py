@@ -56,7 +56,7 @@ case "$*" in
 esac
 fixture="$TEST_REPORT_FIXTURE"
 status="$TEST_GRADLE_STATUS"
-case "$*" in *NotebookMigrationTest*) fixture="$NOTEBOOK_REPORT_FIXTURE";status="$NOTEBOOK_TEST_STATUS" ;; esac
+case "$*" in *NotebookProof*) fixture="$NOTEBOOK_REPORT_FIXTURE";status="$NOTEBOOK_TEST_STATUS" ;; esac
 if [ -n "$flavor" ] && [ -n "$fixture" ]; then
   target="app/build/outputs/androidTest-results/connected/debug/flavors/$flavor"
   mkdir -p "$target"
@@ -167,8 +167,9 @@ exit "$status"
     def test_notebook_phases_and_recovery_run_even_after_pdf_failure(self):
         result,artifacts=self.run_smoke(gradle_status=7)
         calls=artifacts['build/reports/emulator/gradle-invocations.txt'].splitlines()
-        notebook=[line for line in calls if 'NotebookMigrationTest' in line]
+        notebook=[line for line in calls if 'NotebookProof' in line]
         self.assertEqual(2,len(notebook));self.assertIn('connectedAndroidx',notebook[0]);self.assertIn('connectedComposepdf',notebook[1])
+        self.assertTrue(all('android.testInstrumentationRunnerArguments.annotation=im.commonplace.reader.notebook.NotebookProof' in line for line in notebook))
         self.assertIn('build/reports/emulator/notebook-recovery-invoked',artifacts)
         for flavor in ('androidx','composepdf'):
             self.assertTrue(any(f'test-results/notebook-focused/{flavor}/TEST-' in path for path in artifacts))
@@ -177,7 +178,7 @@ exit "$status"
     def test_failed_notebook_phase_does_not_hide_later_flavor_or_recovery(self):
         result,artifacts=self.run_smoke(notebook_status=8)
         self.assertEqual(8,result.returncode,result.stdout+result.stderr)
-        self.assertEqual(2,artifacts['build/reports/emulator/gradle-invocations.txt'].count('NotebookMigrationTest'))
+        self.assertEqual(2,artifacts['build/reports/emulator/gradle-invocations.txt'].count('NotebookProof'))
         self.assertIn('build/reports/emulator/notebook-recovery-invoked',artifacts)
 
     def test_notebook_recovery_and_absent_notebook_reports_are_independent_failures(self):

@@ -60,7 +60,7 @@ def run_flavor(flavor,source_sha=None):
         for apk in (f'app/build/outputs/apk/{flavor}/debug/app-{flavor}-debug.apk',f'app/build/outputs/apk/androidTest/{flavor}/debug/app-{flavor}-debug-androidTest.apk'):
             require(command(['install','-r',apk],timeout=90),'APK install failed')
         require(command(['shell','run-as',package,'mkdir','-p','files']),'private files unavailable')
-        require(command(['exec-in','run-as',package,'dd','of=files/notebook-disposable-install'],input=run_id),'could not establish disposable marker')
+        require(command(['shell','run-as',package,'/system/bin/sh','-c',f"'printf %s {run_id} > files/notebook-disposable-install'"]),'could not establish disposable marker')
         if require(command(['shell','run-as',package,'/system/bin/cat','files/notebook-disposable-install']),'disposable marker unavailable')!=run_id: raise RuntimeError('disposable marker not acknowledged')
         require(command(['shell','run-as',package,'rm','-f','files/notebook-recovery-ready','files/notebook-recovery-verified']),'could not reset private notebook markers')
         instrument('stage','stageAcknowledgedNotebook')

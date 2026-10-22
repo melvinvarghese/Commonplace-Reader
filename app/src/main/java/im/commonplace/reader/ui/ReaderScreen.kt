@@ -64,9 +64,11 @@ private fun ReaderSourceScreen(activity: FragmentActivity, model: ReaderViewMode
     LaunchedEffect(host,nativeReady,state.pendingEntryJump?.requestId) {
         val jump=state.pendingEntryJump
         if(host!=null && source!=null && nativeReady && jump!=null && state.phase!=ReaderPhase.Error && state.phase!=ReaderPhase.Unsupported) {
-            val accepted=host.goToEntry(jump.location)
-            model.onEntryNavigationResult(source.id,jump.requestId,state.readerSession,accepted)
-            if(accepted) host.publishCurrentPosition()
+            val arrived=host.goToEntry(jump.entryId,jump.location) {
+                model.onEntryCommandAccepted(source.id,jump.requestId,state.readerSession)
+            }
+            model.onEntryNavigationResult(source.id,jump.requestId,state.readerSession,arrived!=null)
+            if(arrived!=null) model.onReaderEvent(source.id,ReaderEvent.PositionChanged(source.id,arrived),state.readerSession)
         }
     }
     Surface(Modifier.fillMaxSize()) {

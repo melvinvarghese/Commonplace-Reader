@@ -29,6 +29,7 @@ REQUIRED_CASES = {
     'im.commonplace.reader.ui.NotebookLayoutTest': {'largeTextLightAndDarkKeepSaveAndConflictActionsReachable'},
     'im.commonplace.reader.reader.NotebookPassageTest': set('''
         entryLocationBeatsLastProgress sameSourceNewEntryRequestIsNotIgnored recreationDoesNotReplayConsumedJump
+        immediateRecreationAfterAcceptanceRetainsPendingPassage
         nativePositionAfterJumpUpdatesNormalProgress returnRestoresEntryDetail changedBytesKeepWritingVisibleWithoutNativeFallback
     '''.split()),
 }

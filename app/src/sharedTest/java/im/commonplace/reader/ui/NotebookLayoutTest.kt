@@ -21,6 +21,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 
+@im.commonplace.reader.notebook.NotebookProof
 @RunWith(AndroidJUnit4::class)
 class NotebookLayoutTest {
     @get:Rule val compose=createEmptyComposeRule()

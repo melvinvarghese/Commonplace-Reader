@@ -60,6 +60,12 @@ class NotebookRecoveryRunnerTest(unittest.TestCase):
         self.assertFalse(any('instrument' in c for c in calls))
         self.assertTrue(any('files/notebook-disposable-install' in c for c in calls))
         self.assertFalse(any('files/reader-recovery-ready' in c for c in calls))
+    def test_small_marker_uses_quoted_native_shell_not_lossy_exec_in_stdin(self):
+        result,calls,_=self.exercise();self.assertTrue(result)
+        self.assertFalse(any('exec-in' in c for c in calls))
+        writes=[c for c in calls if any('printf %s' in arg for arg in c)]
+        self.assertEqual(1,len(writes));self.assertEqual(['adb','shell','run-as','im.commonplace.reader.androidx','/system/bin/sh','-c'],writes[0][:-1])
+        self.assertEqual(f"'printf %s {RUN} > files/notebook-disposable-install'",writes[0][-1])
     def test_no_disposable_environment_refuses_before_install(self):
         with patch.dict(os.environ,{'COMMONPLACE_DISPOSABLE_EMULATOR':'0'}),patch.object(runner.subprocess,'run') as run:
             self.assertFalse(runner.run_flavor('androidx',SHA));run.assert_not_called()

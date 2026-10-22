@@ -27,6 +27,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /** Shared UI assertions; host execution does not prove native reading or process death. */
+@im.commonplace.reader.notebook.NotebookProof
 @RunWith(AndroidJUnit4::class)
 class NotebookTest {
     @get:Rule val compose=createEmptyComposeRule()

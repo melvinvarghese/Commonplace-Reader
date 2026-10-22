@@ -23,6 +23,16 @@ class NotebookViewModelTest {
     private fun NotebookViewModel.body(text: String)=updateFields(NotebookFields(body=text))
     private suspend fun TestScope.new(model: NotebookViewModel) { model.newEntry(EntryKind.THOUGHT,null); runCurrent() }
 
+    @Test fun viewingSavedEntryFromDraftOfferActuallyOpensSavedDetail()=runTest {
+        val saved=store.entry("entry","Saved original")
+        store.entries.value=listOf(saved)
+        store.beginEdit("entry")
+        val m=model();m.editEntry("entry");runCurrent()
+        assertNotNull(m.state.value.resumeOffer);assertNull(m.state.value.detail)
+        m.dismissResumeOffer();runCurrent()
+        assertNull(m.state.value.resumeOffer);assertEquals(saved,m.state.value.detail)
+        assertNotNull(store.getDraft("entry"));assertNull(m.state.value.editor)
+    }
     @Test fun draftDebounceAcknowledgesOnlyAt300ms()=runTest {
         val m=model(); new(m); m.body("latest")
         advanceTimeBy(299); runCurrent()
