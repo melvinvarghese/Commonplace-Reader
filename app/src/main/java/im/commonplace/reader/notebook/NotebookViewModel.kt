@@ -71,9 +71,10 @@ class NotebookViewModel(private val store: NotebookStore) : ViewModel() {
             else -> mutable.update { it.copy(notice="The draft changed. Reload it before editing.") }
         }
     }
-    private fun startEditor(draft: NotebookDraftEntity) {
+    private suspend fun startEditor(draft: NotebookDraftEntity) {
+        val saved=if(draft.isNew) null else store.getEntry(draft.targetId)
         generation++; submitted=null
-        mutable.update { it.copy(editor=NotebookEditor(draft),resumeOffer=null,notice=null,leavePrompt=false) }
+        mutable.update { it.copy(editor=NotebookEditor(draft),detail=saved,resumeOffer=null,notice=null,leavePrompt=false) }
     }
     fun updateFields(fields: NotebookFields) {
         if(state.value.busy) return

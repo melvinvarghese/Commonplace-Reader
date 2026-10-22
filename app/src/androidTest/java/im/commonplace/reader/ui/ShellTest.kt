@@ -35,6 +35,11 @@ class ShellTest {
             composeRule.onNodeWithText("Import PDF or EPUB").assertIsDisplayed()
             composeRule.onNodeWithText("Settings & data").performClick()
             composeRule.onNodeWithText("Offline and private").assertIsDisplayed()
+            composeRule.onNodeWithText("Commonplace").performClick()
+            composeRule.waitUntil(10_000) {
+                composeRule.onAllNodesWithText("No entries yet").fetchSemanticsNodes().isNotEmpty()
+            }
+            composeRule.onNodeWithText("New entry").assertIsDisplayed()
         }
     }
 }

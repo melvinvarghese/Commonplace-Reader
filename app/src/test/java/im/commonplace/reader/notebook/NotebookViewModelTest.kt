@@ -109,6 +109,12 @@ class NotebookViewModelTest {
         m.resumeDraft("entry"); runCurrent()
         assertEquals("draft",m.state.value.editor!!.fields.body)
     }
+    @Test fun resumeLoadsImmutableSavedContextForEditor()=runTest {
+        val saved=store.entry("entry","saved"); store.entries.value=listOf(saved)
+        store.beginEdit("entry")
+        val m=model(); m.resumeDraft("entry"); runCurrent()
+        assertEquals(saved,m.state.value.detail)
+    }
     @Test fun draftForAnotherEntryDoesNotCollide()=runTest {
         val m=model(); new(m); m.body("A"); m.requestLeave(); runCurrent()
         val a=store.drafts.value.single(); new(m); m.body("B"); m.save(); runCurrent()
