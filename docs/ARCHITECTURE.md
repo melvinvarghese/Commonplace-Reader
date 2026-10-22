@@ -2,7 +2,7 @@
 
 **A home for the ideas you keep.**
 
-**Current status: approved direction and seven-task foundation/proof milestone; evidence review reached NO SELECTION for PDF.** The owner approved the full plan and normal incremental pushes to `main`. Readium EPUB has a bounded passing proof; both PDF candidates were evaluated and rejected for milestone acceptance. The app remains a development proof, not a beta. No Android baseline increase or third engine is authorized.
+**Current status: notebook writing/recovery is implemented and verified; native passage switching blocks milestone acceptance. PDF remains NO SELECTION.** The owner approved the notebook specification, seven-task plan, native execution and normal incremental pushes to `main`. Readium EPUB has a bounded historical passing proof; current-source API 28 saved-capture reopening also fails. Both PDF candidates were evaluated and rejected for milestone acceptance. See [notebook evidence](NOTEBOOK_PROOF.md) rather than reusing historical passes. The app remains a debug development trial, not a beta. No Android baseline increase or third engine is authorized.
 
 The design below retains the intended beta requirements. Statements in the historical review section describe the original checkpoint, not today’s implementation. The [approved plan](superpowers/plans/2026-10-20-foundation-reader-proof.md), [final reader decision](READER_PROOF.md#final-milestone-decision--task-7), [data model](DATA_MODEL.md), [development](DEVELOPMENT.md) and [testing](TESTING.md) separate implemented features from unrun/rejected/planned work. The original proposed-design wording was: “Status: proposed design, awaiting the owner's review”; it did not authorize implementation at that earlier checkpoint.
 
@@ -10,7 +10,7 @@ Commonplace will be a dependable offline Android reader and personal commonplace
 
 ## What the first beta includes
 
-The first beta is intended to combine PDF and reflowable EPUB reading with four saved entry types: thoughts, highlights, annotations, and source notes. Reading progress, bookmarks, tags, collections, search, Markdown export, and validated backup/restore are beta requirements; at the original design checkpoint none was implemented or tested. The current milestone implements only bounded imports, EPUB capture/annotations, progress and bookmarks, not the full beta. A highlight stores the selected quotation and any reflection separately, and remains readable when its book is missing.
+The first beta is intended to combine PDF and reflowable EPUB reading with four saved entry types: thoughts, highlights, annotations, and source notes. Reading progress, bookmarks, tags, collections, search, Markdown export, and validated backup/restore are beta requirements; at the original design checkpoint none was implemented or tested. Current work adds the notebook's writing/editing and independent drafts to bounded imports, EPUB capture/annotations, progress and bookmarks, not the full beta. A highlight stores the selected quotation and any reflection separately, and remains readable when its book is missing.
 
 PDF text search, selection, and precise highlights are requirements for supported text documents, not claims about every PDF. Scanned documents may only render; no OCR is included. Password-protected PDFs, fixed-layout EPUBs, and malformed publications need explicit supported/unsupported results rather than blanket compatibility claims. DRM support and circumvention are outside this beta.
 
@@ -31,6 +31,18 @@ Use Kotlin, Jetpack Compose, Material 3, ViewModels, coroutines/Flow, Room/SQLit
 The normal flow is **screen → ViewModel → operation/repository → Room or file storage → Flow → screen**. Add small operation classes where coordination warrants them; do not wrap every database call in an empty abstraction. A small application-owned dependency container is sufficient initially.
 
 Reader widgets may use Android View/Fragment interoperability within the Compose app. “One native Compose app” does not mean rewriting a library's navigator. Engine objects and Android lifecycle objects never become database fields. No plugin framework, server, AI API, or cloud infrastructure is required.
+
+## Implemented notebook boundaries
+
+The [approved notebook specification](superpowers/specs/2026-10-22-commonplace-notebook-design.md) separates finished entries from `notebook_drafts`. One Activity-scoped `NotebookViewModel` serializes editor actions, debounces draft writes and flushes at leave/background boundaries. Room acknowledgment controls status; input not yet acknowledged is not promised durable after termination. The 300-ms debounce is not a durability deadline.
+
+`NotebookRepository` owns transactional session/draft-revision checks, entry-revision conflicts, stable commit tokens, atomic entry-save/draft-delete, and guarded discard. Title/body/color are the editable fields; highlight quotation, full location envelope, attribution, identity and creation time are not supplied by the editor. New source-linked writing snapshots the explicitly selected source, while existing orphaned entries retain their writing and remain editable. Thoughts have no invented attribution. An annotation is a distinct kind from a source note; neither claims a passage.
+
+The notebook list has type filters, separate drafts, full-entry detail and an editor with explicit Save, failure/conflict and resume/discard states. There is no finished-entry deletion, tagging, collection indexing, export or sync in this increment. The existing paper/forest/dark theme and 48-dp minimum controls are retained; automated layout coverage is not spoken TalkBack or physical-device evidence.
+
+Notebook-to-reader requests contain only an internal stable entry ID. `EntryReaderTargetResolver` re-reads the record and source, applies canonical-path/SHA-256 verification and rejects PDF/unknown/mismatched locations. Source-level notes offer Open book, not an invented passage. A token gates each EPUB jump on rendered/observed native readiness. Completion additionally checks the engine-resolved exact quotation range and an observed native position, rather than consuming the request on Boolean command acceptance. Native-session guards reject old hosts; only real navigator positions update progress. Recreation and initial-entry cases pass, but the explicit same-source replacement test still fails in all four native cells, so this handoff is not accepted as dependable. Failed resolution leaves quotation, reflection and attribution readable with Back to entry; it does not label last progress as successful passage opening.
+
+Room schema 2 has a tested v1 migration without destructive fallback. Migration preserves raw location/text values and existing identities/timestamps. [Data model](DATA_MODEL.md) and [notebook proof](NOTEBOOK_PROOF.md) document exact constraints and verification limits. PDF's required selection, original-space geometry, durable highlights and recovery gate are unchanged.
 
 ## Readers: one choice made, one evidence gate
 

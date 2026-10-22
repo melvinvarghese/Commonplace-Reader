@@ -1,6 +1,24 @@
 # Testing Commonplace
 
-## Task 7 documentation checkpoint
+## Notebook checkpoint
+
+The notebook checkpoint is **acceptance-blocked**; see [NOTEBOOK_PROOF](NOTEBOOK_PROOF.md) for source `600ff3037604f747bd184312e51fb158ce8f61f9`, CI run 39713208135 and debug trial limits. Local checks passed **155 Androidx + 154 Composepdf JVM cases**, zero failures/errors/skips; **85 Python regressions**; **five fixture tests**, including byte-for-byte regeneration of all 11 committed corpus files; both-flavor strict lint and app/test-APK builds. Each native API/flavor cell passes 39/40 focused notebook cases and its real notebook restart probe. Same-source passage switching fails in all four cells; existing EPUB saved-capture reopening fails on API 28. Full/PDF gates remain failed. Spoken TalkBack, a manual keyboard audit and physical hardware are NOT RUN.
+
+Use the full Gradle/Python/fixture commands below, with `--rerun` on each JVM test task for a fresh full run. `NotebookMigrationTest` seeds the exported v1 SQLite schema and checks values/constraints and migrated/fresh v2 parity. `NotebookRepositoryTest` uses real Room, rollback triggers and controlled late-writer barriers; virtual-time ViewModel tests check acknowledgment, retries, conflicts and source/session guards. Shared Compose tests run on both Robolectric and device. `NotebookPassageTest` uses original EPUB prose with distant repeated passages and a third saved-progress position; it checks the actual navigator/visible target, same-source requests, consumed-jump recreation, normal progress, Back to entry and byte-change failure writing.
+
+Only on a disposable, empty CI emulator with the built app/test APKs:
+
+```sh
+COMMONPLACE_DISPOSABLE_EMULATOR=1 python3 tools/run_emulator_smoke.py
+```
+
+The existing pinned API `28`/`37.0`, x86_64 Google APIs matrix is reused. Full suites and focused PDF checks remain mandatory and may fail; their original result guard is unchanged. Import/EPUB recovery, focused notebook classes for **both** flavors, the notebook result guard and notebook recovery run independently of earlier failures. Later notebook phases still run after an earlier notebook failure. Final status aggregates every required failure; a passing notebook lane does not turn the full/PDF gate green.
+
+Notebook XML is archived separately at `build/reports/emulator/test-results/notebook-focused/<flavor>/`. Its `identity.json` binds source SHA, unique run ID, API, ABI, flavor, invocation exit and exact XML hashes. The native runner selects the five notebook classes using runtime annotation `im.commonplace.reader.notebook.NotebookProof`, not a comma-separated class argument that the tested runner truncated. `verify_notebook_test_results.py <notebook-xml-root>` requires all 40 named migration/repository/UI/layout/navigation cases, including immediate recreation after command acceptance. It rejects missing/duplicate/unexpected cases and failure/error/skip, and checks current-source/device attribution. It correctly fails this checkpoint. Do not substitute ordinary-suite XML or hand-written identity files for orchestration output.
+
+`run_notebook_recovery.py` additionally requires explicit disposable opt-in, the emulator property, a private run-bound disposable marker, exact acknowledged-stage/verified-case markers and exactly one passing instrumentation case per stage. It confirms a live PID, force-stop, PID disappearance, launcher reopen and a different nonempty PID. The guarded probe verifies an unfinished Thought, saved-highlight edit draft, independent target drafts and a committed exact Unicode entry without a lingering draft through Room and the actual notebook UI. Ordinary-suite no-ops and Activity recreation are not restart passes. Evidence, source SHA/API/ABI/flavor and per-case status are retained at `build/reports/notebook-recovery/<flavor>/`; uploads use `if: always()`.
+
+## Historical foundation Task 7 documentation checkpoint
 
 **Decision: NO SELECTION.** Both PDF candidates are rejected for milestone acceptance; the [final capability table](READER_PROOF.md#final-milestone-decision--task-7) separates required features, safety assertions and NOT RUN evidence. Readium's accepted bounded Task 4 proof is not a PDF or release-readiness pass. No source, test, dependency or workflow was changed in this checkpoint.
 
