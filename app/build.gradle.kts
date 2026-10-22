@@ -36,6 +36,12 @@ android {
             versionNameSuffix = "-composepdf"
             buildConfigField("String", "PDF_ENGINE_ID", "\"nucleus-composepdf\"")
         }
+        create("hybrid") {
+            dimension = "pdfEngine"
+            applicationIdSuffix = ".hybrid"
+            versionNameSuffix = "-disposable-hybrid"
+            buildConfigField("String", "PDF_ENGINE_ID", "\"disposable-pdfjs-androidpdfviewer\"")
+        }
     }
 
     compileOptions {
@@ -89,6 +95,7 @@ dependencies {
 
     "androidxImplementation"(libs.androidxPdfViewerFragment)
     "composepdfImplementation"(libs.composePdfium)
+    "hybridImplementation"("com.github.barteksc:android-pdf-viewer:3.1.0-beta.1")
 
     testImplementation(libs.junit)
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.11.0")

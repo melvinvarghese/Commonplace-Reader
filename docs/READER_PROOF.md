@@ -1,5 +1,7 @@
 # Reader proof ledger
 
+The owner has separately approved one [disposable PDF.js/AndroidPdfViewer prototype and focused API 28/37 CI attempt](HYBRID_PDF_PROOF.md). That spike does not supersede the milestone rejection below, waive any exactness gate, or select a release engine. Known notebook/EPUB passage-switch and API 28 capture-reopening failures remain separately recorded in [NOTEBOOK_PROOF](NOTEBOOK_PROOF.md).
+
 ## Final milestone decision — Task 7
 
 **PDF decision: NO SELECTION.** Tasks 1–6 are closed; Task 7 records the evidence review and documentation stop. Readium EPUB passes its bounded proof. Both PDF candidates are rejected for milestone acceptance because neither integration supplies the required exact selection, original-space geometry, durable highlights and recovery. Rendering and source-annotation safety passes do not waive those requirements. This is a foundation/proof checkpoint, not a beta or a green full-device matrix.

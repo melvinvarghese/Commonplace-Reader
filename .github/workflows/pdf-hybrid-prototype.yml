@@ -1,0 +1,112 @@
+name: Disposable hybrid PDF.js prototype
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  hybrid-proof:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 50
+    strategy:
+      fail-fast: false
+      matrix:
+        api: ['28', '37.0']
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407 # v3
+        with:
+          cmdline-tools-version: '16111833'
+          packages: platform-tools
+          log-accepted-android-sdk-licenses: false
+      - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
+      - name: Install compile SDK and Build Tools
+        run: sdkmanager 'platforms;android-37.0' 'build-tools;36.0.0'
+      - name: Regenerate and verify original fixture corpus
+        id: fixture-checks
+        continue-on-error: true
+        run: |
+          python3 -m pip install -r tools/fixtures/requirements.txt
+          python3 -m unittest tools/fixtures/test_generate_fixtures.py -v
+          python3 tools/fixtures/generate_fixtures.py --output build/fixture-regeneration --large
+          python3 -c 'from pathlib import Path; source=Path("app/src/androidTest/assets/fixtures"); generated=Path("build/fixture-regeneration"); files=[p for p in source.iterdir() if p.suffix in (".pdf", ".epub", ".json")]; assert files; assert all(p.read_bytes()==(generated/p.name).read_bytes() for p in files), "committed fixture bytes differ from pinned generator"'
+      - name: Run existing Python tool regression suite
+        id: python-tests
+        continue-on-error: true
+        run: python3 -m unittest discover -s tools -p 'test_*.py' -v
+      - name: Run hybrid selection regression test
+        id: selection-test
+        continue-on-error: true
+        run: node tools/test_hybrid_selection.mjs
+      - name: Build and strictly verify hybrid flavor
+        id: gradle-checks
+        continue-on-error: true
+        run: >-
+          ./gradlew --no-daemon --dependency-verification=strict
+          :app:testHybridDebugUnitTest :app:lintHybridDebug
+          :app:assembleHybridDebug :app:assembleHybridDebugAndroidTest
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Check out the unchanged pinned emulator runner
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: reactivecircus/android-emulator-runner
+          ref: a421e43855164a8197daf9d8d40fe71c6996bb0d
+          path: .diagnostic-emulator-runner
+          persist-credentials: false
+      - name: Select installed API 37 AVD tools and add pre-boot target gate
+        if: matrix.api == '37.0'
+        run: |
+          tool_bin="$(dirname "$(readlink -f "$(command -v avdmanager)")")"
+          test "$tool_bin" != "$ANDROID_HOME/cmdline-tools/latest/bin"
+          test -x "$tool_bin/avdmanager"
+          cat "$tool_bin/../source.properties"
+          echo "COMMONPLACE_CMDLINE_TOOLS_BIN=$tool_bin" >> "$GITHUB_ENV"
+          python3 tools/prepare_emulator_runner.py
+      - name: Run one hybrid passage recovery proof
+        uses: ./.diagnostic-emulator-runner
+        env:
+          COMMONPLACE_DISPOSABLE_EMULATOR: '1'
+        with:
+          api-level: ${{ matrix.api }}
+          arch: x86_64
+          target: google_apis
+          ram-size: 2048M
+          disk-size: 4096M
+          disable-animations: true
+          pre-emulator-launch-script: adb start-server
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -show-kernel
+          script: |
+            python3 tools/run_hybrid_proof.py --api-label 'api-${{ matrix.api }}'
+      - name: Collect emulator failure diagnostics
+        if: always()
+        run: |
+          mkdir -p build/reports/emulator
+          adb devices -l > build/reports/emulator/devices.txt 2>&1 || true
+          timeout 20 adb logcat -d > build/reports/emulator/logcat.txt 2>&1 || true
+          find "$HOME/.android/avd" -name config.ini -exec cat {} \; > build/reports/emulator/avd-config.txt 2>&1 || true
+      - name: Enforce all focused checks
+        if: always()
+        run: |
+          test '${{ steps.python-tests.outcome }}' = success
+          test '${{ steps.selection-test.outcome }}' = success
+          test '${{ steps.gradle-checks.outcome }}' = success
+          test '${{ steps.fixture-checks.outcome }}' = success
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: hybrid-pdf-proof-api-${{ matrix.api }}
+          retention-days: 7
+          if-no-files-found: warn
+          path: |
+            build/reports/
+            app/build/reports/androidTests/
+            app/build/outputs/androidTest-results/

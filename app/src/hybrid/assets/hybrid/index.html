@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self'; worker-src 'self'; font-src 'self' data: blob:; img-src 'self' data:; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'">
+  <link rel="stylesheet" href="./text_layer.css">
+  <style>
+    html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: transparent; }
+    #page { position: absolute; overflow: hidden; background: transparent; }
+    .textLayer { user-select: text; -webkit-user-select: text; }
+  </style>
+  <title>Hybrid PDF text selection</title>
+</head>
+<body>
+  <main id="page" aria-label="PDF text selection layer"></main>
+  <script type="module" src="./selection.mjs"></script>
+</body>
+</html>
