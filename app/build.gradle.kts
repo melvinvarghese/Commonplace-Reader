@@ -49,6 +49,8 @@ android {
     sourceSets.getByName("androidTest").java.srcDir("src/sharedTest/java")
     sourceSets.getByName("test").java.srcDir("src/androidTest/java/im/commonplace/reader/data")
     sourceSets.getByName("test").java.srcDir("src/androidTest/java/im/commonplace/reader/imports")
+    sourceSets.getByName("test").resources.srcDir("schemas")
+    sourceSets.getByName("androidTest").assets.srcDir("schemas")
 
     buildFeatures {
         compose = true

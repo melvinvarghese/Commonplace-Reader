@@ -6,6 +6,7 @@ import androidx.datastore.preferences.preferencesDataStore
 import im.commonplace.reader.data.ReaderPreferences
 import im.commonplace.reader.data.CommonplaceDatabase
 import im.commonplace.reader.data.ReaderRepository
+import im.commonplace.reader.data.MIGRATION_1_2
 import im.commonplace.reader.imports.DocumentImporter
 
 private val Context.readerDataStore by preferencesDataStore(name = "reader")
@@ -16,6 +17,7 @@ class AppContainer(context: Context) {
     // Building the handle is lazy; Room opens/queries the database on its I/O executor.
     val database: CommonplaceDatabase by lazy {
         Room.databaseBuilder(applicationContext, CommonplaceDatabase::class.java, "commonplace.db")
+            .addMigrations(MIGRATION_1_2)
             .build()
     }
     val readerPreferences: ReaderPreferences by lazy { ReaderPreferences(applicationContext.readerDataStore) }

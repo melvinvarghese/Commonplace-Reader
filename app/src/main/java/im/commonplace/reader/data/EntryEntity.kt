@@ -5,9 +5,9 @@ import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
 import im.commonplace.reader.reader.SavedLocation
-import im.commonplace.reader.reader.Capture
+import androidx.room.ColumnInfo
 
-enum class EntryKind { HIGHLIGHT, ANNOTATION }
+enum class EntryKind { HIGHLIGHT, ANNOTATION, THOUGHT, SOURCE_NOTE }
 
 @Entity(tableName = "entries", foreignKeys = [ForeignKey(
     entity = SourceEntity::class, parentColumns = ["id"], childColumns = ["sourceId"],
@@ -21,9 +21,11 @@ data class EntryEntity(
     val title: String?,
     val body: String?,
     val quotation: String?,
-    val attributionTitle: String,
+    val attributionTitle: String?,
     val attributionAuthors: String?,
     val colorArgb: Int?,
     val createdAt: Long,
     val modifiedAt: Long,
+    @ColumnInfo(defaultValue = "0") val revision: Long = 0,
+    val lastNotebookCommitId: String? = null,
 )

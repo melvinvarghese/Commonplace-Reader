@@ -9,10 +9,11 @@ import im.commonplace.reader.reader.SavedLocation
 import kotlinx.serialization.json.*
 
 @Database(entities = [SourceEntity::class, EntryEntity::class, BookmarkEntity::class,
-    ReadingStateEntity::class, ReaderDraftEntity::class], version = 1, exportSchema = true)
+    ReadingStateEntity::class, ReaderDraftEntity::class, NotebookDraftEntity::class], version = 2, exportSchema = true)
 @TypeConverters(ReaderConverters::class)
 abstract class CommonplaceDatabase : RoomDatabase() {
     abstract fun readerDao(): ReaderDao
+    abstract fun notebookDao(): NotebookDao
 }
 
 class ReaderConverters {
