@@ -99,6 +99,8 @@ class NotebookTest {
     }
     @Test fun draftsOfferResumeAndDiscard() {
         launch(); newThought("Recover this draft"); compose.onNodeWithText("Back").performClick(); awaitText("Drafts")
+        val target=runBlocking { repo.observeDrafts().first().single().targetId }
+        compose.onNodeWithTag("draft-$target").assertExists()
         compose.onNodeWithText("Review draft").performScrollTo().performClick(); awaitText("Recoverable draft")
         compose.onNodeWithText("Resume draft").performClick(); awaitText("Body")
         compose.onNodeWithText("Recover this draft").assertExists()

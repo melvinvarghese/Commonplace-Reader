@@ -110,8 +110,10 @@ jobs:
           cat "$tool_bin/../source.properties"
           echo "COMMONPLACE_CMDLINE_TOOLS_BIN=$tool_bin" >> "$GITHUB_ENV"
           python3 tools/prepare_emulator_runner.py
-      - name: Launch and navigate both shells
+      - name: Run native reader and independent notebook proof lanes
         uses: ./.diagnostic-emulator-runner
+        env:
+          COMMONPLACE_DISPOSABLE_EMULATOR: '1'
         with:
           api-level: ${{ matrix.api }}
           arch: x86_64

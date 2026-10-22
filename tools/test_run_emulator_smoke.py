@@ -11,6 +11,7 @@ from pathlib import Path
 
 TOOLS = Path(__file__).parent
 from test_verify_android_test_results import PASSING
+from tools.test_verify_notebook_test_results import NotebookResultsGuardTest
 
 
 class LargeFixtureStagingTest(unittest.TestCase):
@@ -28,19 +29,22 @@ class LargeFixtureStagingTest(unittest.TestCase):
 
 
 class EmulatorSmokeTest(unittest.TestCase):
-    def run_smoke(self, gradle_status=0, reports=True, adb_status=0, recovery_status=0, reader_recovery_status=0, pdf_recovery_status=0, fixture_readback=True):
+    def run_smoke(self, gradle_status=0, reports=True, adb_status=0, recovery_status=0, reader_recovery_status=0, pdf_recovery_status=0, fixture_readback=True, notebook_status=0, notebook_recovery_status=0, notebook_reports=True):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             (root / 'tools').mkdir()
             shutil.copy(TOOLS / 'verify_android_test_results.py', root / 'tools')
+            shutil.copy(TOOLS / 'verify_notebook_test_results.py', root / 'tools')
+            (root / 'tools/run_notebook_recovery.py').write_text("from pathlib import Path\np=Path('build/reports/emulator/notebook-recovery-invoked');p.write_text('both flavors delegated')\nimport sys;sys.exit("+str(notebook_recovery_status)+")\n")
             (root / 'tools/run_import_recovery.py').write_text('import sys; sys.exit(' + str(recovery_status) + ')\n')
             (root / "tools/run_reader_recovery.py").write_text("import sys; sys.exit(" + str(reader_recovery_status) + ")\n")
             (root / 'tools/run_pdf_recovery.py').write_text('import sys; sys.exit(' + str(pdf_recovery_status) + ')\n')
             # Real subprocess boundaries; no emulator is available on this host.
             adb = root / 'adb'
             payload = '%PDF-smoke-test' if fixture_readback else 'partial'
-            adb.write_text('#!/bin/sh\nprintf "adb %s\\n" "$*" >> build/reports/emulator/timeline.txt\ncase "$*" in "exec-out run-as im.commonplace.reader.composepdf cat files/proof-large-100mib.pdf") printf "%s" "' + payload + '"; exit 0 ;; esac\nprintf "adb %s\\n" "$*"\ncase "$*" in install*|exec-in*|"shell run-as"*) exit 0 ;; esac\nexit ' + str(adb_status) + '\n')
+            adb.write_text('#!/bin/sh\nprintf "adb %s\\n" "$*" >> build/reports/emulator/timeline.txt\ncase "$*" in "shell getprop ro.build.version.sdk") echo 28;exit 0 ;; "shell getprop ro.product.cpu.abi") echo x86_64;exit 0 ;; "exec-out run-as im.commonplace.reader.composepdf cat files/proof-large-100mib.pdf") printf "%s" "' + payload + '"; exit 0 ;; esac\nprintf "adb %s\\n" "$*"\ncase "$*" in install*|exec-in*|"shell run-as"*) exit 0 ;; esac\nexit ' + str(adb_status) + '\n')
             adb.chmod(0o755)
+            git=root/'git';git.write_text('#!/bin/sh\nprintf "%s\\n" "'+'a'*40+'"\n');git.chmod(0o755)
             gradle = root / 'gradlew'
             gradle.write_text('''#!/bin/sh
 mkdir -p build/reports/emulator
@@ -50,14 +54,20 @@ case "$*" in
   *connectedAndroidxDebugAndroidTest*) flavor=androidx ;;
   *connectedComposepdfDebugAndroidTest*) flavor=composepdf ;;
 esac
-if [ -n "$flavor" ] && [ -n "$TEST_REPORT_FIXTURE" ]; then
+fixture="$TEST_REPORT_FIXTURE"
+status="$TEST_GRADLE_STATUS"
+case "$*" in *NotebookMigrationTest*) fixture="$NOTEBOOK_REPORT_FIXTURE";status="$NOTEBOOK_TEST_STATUS" ;; esac
+if [ -n "$flavor" ] && [ -n "$fixture" ]; then
   target="app/build/outputs/androidTest-results/connected/debug/flavors/$flavor"
   mkdir -p "$target"
-  cp "$TEST_REPORT_FIXTURE" "$target/TEST-device.xml"
+  cp "$fixture" "$target/TEST-device.xml"
 fi
-exit ''' + str(gradle_status) + '\n')
+exit "$status"
+''')
             gradle.chmod(0o755)
             fixture = root / 'fixture.xml'
+            notebook_fixture=root/'notebook-fixture';notebook_fixture.mkdir()
+            NotebookResultsGuardTest().fixture(notebook_fixture)
             if reports:
                 for flavor in ('androidx', 'composepdf'):
                     folder = root / 'app/build/outputs/androidTest-results/connected/debug/flavors' / flavor
@@ -78,6 +88,8 @@ exit ''' + str(gradle_status) + '\n')
                 apk.touch()
             result = subprocess.run([sys.executable, str(runner)],
                                     cwd=root, env={**os.environ, 'TEST_REPORT_FIXTURE': str(fixture) if reports else '',
+                                                   'NOTEBOOK_REPORT_FIXTURE':str(notebook_fixture/'androidx/TEST-device.xml') if notebook_reports else '',
+                                                   'TEST_GRADLE_STATUS':str(gradle_status),'NOTEBOOK_TEST_STATUS':str(notebook_status),
                                                    'PATH': str(root) + ':' + os.environ['PATH']},
                                     capture_output=True, text=True, timeout=30)
             artifacts = {str(p.relative_to(root)): p.read_text(errors='replace')
@@ -137,7 +149,7 @@ exit ''' + str(gradle_status) + '\n')
     def test_pdf_focus_runs_after_full_suite_and_keeps_separate_reports(self):
         result, artifacts = self.run_smoke(gradle_status=7)
         calls = artifacts['build/reports/emulator/gradle-invocations.txt'].splitlines()
-        self.assertEqual(len(calls), 5, calls)
+        self.assertEqual(len(calls), 7, calls)
         self.assertIn(':app:connectedAndroidxDebugAndroidTest', calls[0])
         self.assertIn(':app:assembleComposepdfDebug', calls[1])
         self.assertIn(':app:connectedComposepdfDebugAndroidTest', calls[2])
@@ -151,6 +163,27 @@ exit ''' + str(gradle_status) + '\n')
                             for name in artifacts))
         self.assertTrue(any(name.startswith('build/reports/emulator/test-results/pdf-focused/composepdf/')
                             for name in artifacts))
+
+    def test_notebook_phases_and_recovery_run_even_after_pdf_failure(self):
+        result,artifacts=self.run_smoke(gradle_status=7)
+        calls=artifacts['build/reports/emulator/gradle-invocations.txt'].splitlines()
+        notebook=[line for line in calls if 'NotebookMigrationTest' in line]
+        self.assertEqual(2,len(notebook));self.assertIn('connectedAndroidx',notebook[0]);self.assertIn('connectedComposepdf',notebook[1])
+        self.assertIn('build/reports/emulator/notebook-recovery-invoked',artifacts)
+        for flavor in ('androidx','composepdf'):
+            self.assertTrue(any(f'test-results/notebook-focused/{flavor}/TEST-' in path for path in artifacts))
+        self.assertEqual(7,result.returncode)
+
+    def test_failed_notebook_phase_does_not_hide_later_flavor_or_recovery(self):
+        result,artifacts=self.run_smoke(notebook_status=8)
+        self.assertEqual(8,result.returncode,result.stdout+result.stderr)
+        self.assertEqual(2,artifacts['build/reports/emulator/gradle-invocations.txt'].count('NotebookMigrationTest'))
+        self.assertIn('build/reports/emulator/notebook-recovery-invoked',artifacts)
+
+    def test_notebook_recovery_and_absent_notebook_reports_are_independent_failures(self):
+        result,_=self.run_smoke(notebook_recovery_status=9);self.assertEqual(9,result.returncode,result.stdout+result.stderr)
+        result,artifacts=self.run_smoke(notebook_reports=False);self.assertNotEqual(0,result.returncode)
+        self.assertIn('build/reports/emulator/notebook-recovery-invoked',artifacts)
 
 
 if __name__ == '__main__':

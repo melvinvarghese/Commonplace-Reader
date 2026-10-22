@@ -88,7 +88,7 @@ fun NotebookScreen(contentPadding: PaddingValues, onOpenEntryInReader: (String) 
                     if(state.drafts.isNotEmpty()) {
                         item { Text("Drafts",style=MaterialTheme.typography.titleLarge) }
                         items(state.drafts,key={"draft-${it.targetId}"}) { draft ->
-                            Surface(tonalElevation=1.dp,shape=MaterialTheme.shapes.large,modifier=Modifier.fillMaxWidth()) {
+                            Surface(tonalElevation=1.dp,shape=MaterialTheme.shapes.large,modifier=Modifier.fillMaxWidth().testTag("draft-${draft.targetId}")) {
                                 Column(Modifier.padding(20.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
                                     Text(draft.fields.title?.takeUnless { it.isBlank() } ?: draft.kind.label(),style=MaterialTheme.typography.titleMedium)
                                     draft.sourceTitleSnapshot?.let { Text(it) }

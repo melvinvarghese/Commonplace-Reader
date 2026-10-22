@@ -6,11 +6,13 @@ Run only on the disposable, empty-shell CI emulator (logs include package state)
 """
 import os
 import hashlib
+import json
 import shutil
 import subprocess
 import sys
 import tempfile
 import time
+import uuid
 from pathlib import Path
 
 REPORTS = Path('build/reports/emulator')
@@ -170,6 +172,34 @@ def run_instrumentation(flavor, *, focused=False):
     return result.returncode, stage_status
 
 
+def run_notebook_instrumentation(flavor):
+    retained=RETAINED_RESULTS/'notebook-focused'/flavor
+    if retained.exists(): shutil.rmtree(retained)
+    retained.mkdir(parents=True,exist_ok=True)
+    source=RESULTS/flavor
+    if source.exists(): shutil.rmtree(source)
+    identity={'flavor':flavor,'runId':uuid.uuid4().hex,'sourceSha':None,'api':None,'abi':None,'exitCode':1}
+    classes=','.join(('im.commonplace.reader.data.NotebookMigrationTest','im.commonplace.reader.data.NotebookRepositoryTest',
+        'im.commonplace.reader.ui.NotebookTest','im.commonplace.reader.ui.NotebookLayoutTest','im.commonplace.reader.reader.NotebookPassageTest'))
+    try:
+        identity['sourceSha']=subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip()
+        for field,prop in [('api','ro.build.version.sdk'),('abi','ro.product.cpu.abi')]:
+            identity[field]=subprocess.check_output(['adb','shell','getprop',prop],text=True).strip()
+        print(f'Running independent notebook instrumentation: {flavor}; source={identity["sourceSha"]}; API={identity["api"]}; ABI={identity["abi"]}',flush=True)
+        identity['exitCode']=subprocess.run(['./gradlew','--no-daemon','--dependency-verification=strict',
+            f':app:connected{flavor.capitalize()}DebugAndroidTest',f'-Pandroid.testInstrumentationRunnerArguments.class={classes}',
+            f'-Pandroid.testInstrumentationRunnerArguments.notebookRunId={identity["runId"]}',
+            f'-Pandroid.testInstrumentationRunnerArguments.notebookSourceSha={identity["sourceSha"]}']).returncode
+    except (OSError,subprocess.SubprocessError) as error:
+        identity['error']=str(error)
+        print(f'{flavor}: independent notebook instrumentation unavailable: {error}',file=sys.stderr,flush=True)
+    finally:
+        if source.is_dir(): shutil.copytree(source,retained,dirs_exist_ok=True)
+        identity['xmlSha256']={str(p.relative_to(retained)):hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(retained.rglob('TEST-*.xml'))}
+        (retained/'identity.json').write_text(json.dumps(identity,indent=2)+'\n')
+    return identity['exitCode']
+
+
 def main():
     REPORTS.mkdir(parents=True, exist_ok=True)
     sdk = Path(os.environ.get('ANDROID_HOME', '/nonexistent'))
@@ -201,23 +231,25 @@ def main():
         capture(REPORTS / 'probes', f'{flavor}-launch',
                 ['adb', 'shell', 'am', 'start', '-W', '-n', component], timeout=45)
     snapshot('after-probes')
-    recovery_status = 0
     full_guard = subprocess.run([sys.executable, 'tools/verify_android_test_results.py',
                                   str(RETAINED_RESULTS / 'full-suite')])
     focused_guard = subprocess.run([sys.executable, 'tools/verify_android_test_results.py',
                                     '--pdf-focused', str(RETAINED_RESULTS / 'pdf-focused/composepdf')])
     print('Verifying PDF annotation-only force-stop/relaunch safety; native highlight recovery remains a separate unmet gate.', flush=True)
     pdf_recovery_status = subprocess.run([sys.executable, 'tools/run_pdf_recovery.py']).returncode
-    if androidx_status == 0 and composepdf_status == 0 and full_guard.returncode == 0 and focused_status == 0 and focused_guard.returncode == 0:
-        print('Verifying real process-kill import recovery for both variants.', flush=True)
-        recovery_status = subprocess.run([sys.executable, 'tools/run_import_recovery.py']).returncode
-    reader_recovery_status = 0
-    if androidx_status == 0 and composepdf_status == 0 and focused_status == 0 and recovery_status == 0 and full_guard.returncode == 0 and focused_guard.returncode == 0:
-        print('Verifying acknowledged reader writes across real force-stop and monkey relaunch.', flush=True)
-        reader_recovery_status = subprocess.run([sys.executable, 'tools/run_reader_recovery.py']).returncode
-    print(f'Gate status: AndroidX={androidx_status}, Composepdf={composepdf_status}, focused-PDF={focused_status}, fixture-staging={fixture_status or focused_fixture_status}, PDF-annotation-recovery={pdf_recovery_status}, import-recovery={recovery_status}, reader-recovery={reader_recovery_status}, full-suite guard={full_guard.returncode}, focused-PDF guard={focused_guard.returncode}', flush=True)
+    print('Verifying real process-kill import recovery for both variants independently of PDF failures.',flush=True)
+    recovery_status=subprocess.run([sys.executable,'tools/run_import_recovery.py']).returncode
+    print('Verifying acknowledged reader writes across real force-stop and monkey relaunch independently of PDF failures.',flush=True)
+    reader_recovery_status=subprocess.run([sys.executable,'tools/run_reader_recovery.py']).returncode
+    notebook_androidx=run_notebook_instrumentation('androidx')
+    notebook_composepdf=run_notebook_instrumentation('composepdf')
+    notebook_guard=subprocess.run([sys.executable,'tools/verify_notebook_test_results.py',str(RETAINED_RESULTS/'notebook-focused')]).returncode
+    notebook_recovery=subprocess.run([sys.executable,'tools/run_notebook_recovery.py']).returncode
+    snapshot('after-notebook')
+    print(f'Gate status: AndroidX={androidx_status}, Composepdf={composepdf_status}, focused-PDF={focused_status}, fixture-staging={fixture_status or focused_fixture_status}, PDF-annotation-recovery={pdf_recovery_status}, import-recovery={recovery_status}, reader-recovery={reader_recovery_status}, full-suite guard={full_guard.returncode}, focused-PDF guard={focused_guard.returncode}, notebook-androidx={notebook_androidx}, notebook-composepdf={notebook_composepdf}, notebook-guard={notebook_guard}, notebook-recovery={notebook_recovery}', flush=True)
     return (androidx_status or composepdf_status or focused_status or fixture_status or focused_fixture_status
-            or pdf_recovery_status or recovery_status or reader_recovery_status or full_guard.returncode or focused_guard.returncode)
+            or pdf_recovery_status or recovery_status or reader_recovery_status or full_guard.returncode or focused_guard.returncode
+            or notebook_androidx or notebook_composepdf or notebook_recovery or notebook_guard)
 
 
 if __name__ == '__main__':
