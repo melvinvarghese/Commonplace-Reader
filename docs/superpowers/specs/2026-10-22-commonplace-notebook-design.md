@@ -1,6 +1,6 @@
 # Commonplace notebook: writing and editing
 
-**Status: design document for owner review.** The owner approved the conversational design for the full writing-and-editing notebook. This document makes its behavior precise; it does not authorize implementation. After written-spec approval, prepare a separate implementation plan for review and execution-method selection.
+**Status: written specification approved by the owner on 2026-10-22.** The owner approved the full writing-and-editing notebook specification and requested the implementation plan. This document makes its behavior precise; it does not authorize implementation. The separate implementation plan still requires review and execution-method selection.
 
 ## What this adds
 
@@ -101,4 +101,4 @@ Tests must verify actual content, not only schema validity. The [official Room m
 
 ## Review and next step
 
-The owner now reviews this written specification. Approval permits drafting a task-by-task implementation plan with dependencies, file boundaries and test-first steps. Implementation starts only after that plan is reviewed and an execution method is selected. Ordinary incremental verified pushes may continue under the existing authorization; never force-push or overwrite unrelated remote changes.
+The owner approved this written specification and requested the [task-by-task implementation plan](../plans/2026-10-22-commonplace-notebook.md). Implementation starts only after that plan is reviewed and an execution method is selected. Ordinary incremental verified pushes may continue under the existing authorization; never force-push or overwrite unrelated remote changes.
