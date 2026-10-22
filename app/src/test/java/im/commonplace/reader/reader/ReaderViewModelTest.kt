@@ -175,6 +175,60 @@ class ReaderViewModelTest {
         assertEquals(capture, model.uiState.value.selection)
     }
     private fun entry(id: String, loc: SavedLocation?) = EntryEntity(id, if (loc == null) EntryKind.ANNOTATION else EntryKind.HIGHLIGHT, a, loc, null, null, if (loc == null) null else "same phrase", "Original book", null, 42, 1, 1)
+    @Test fun sameSourceNewEntryRequestIsNotIgnored() {
+        open();model.openTarget(EntryReaderTarget.Passage("first",a,location));scheduler.runCurrent()
+        val first=requireNotNull(model.uiState.value.pendingEntryJump)
+        val next=location.copy(payloadJson="""{"href":"next.xhtml","type":"application/xhtml+xml"}""")
+        model.openTarget(EntryReaderTarget.Passage("second",a,next));scheduler.runCurrent()
+        val second=requireNotNull(model.uiState.value.pendingEntryJump)
+        assertNotEquals(first.requestId,second.requestId);assertEquals(next,second.location)
+        model.onEntryNavigationResult(a,first.requestId,model.uiState.value.readerSession,true)
+        assertEquals(second,model.uiState.value.pendingEntryJump)
+    }
+    @Test fun entryLocationBeatsLastProgressWithoutSynthesizingProgress() {
+        val last=location.copy(payloadJson="""{"href":"last.xhtml","type":"application/xhtml+xml"}""")
+        persistence.progress[a]=last
+        model.openTarget(EntryReaderTarget.Passage("entry",a,location));scheduler.runCurrent()
+        assertEquals(location,model.uiState.value.initialLocation);assertNull(model.uiState.value.currentLocation)
+        model.flushProgress();scheduler.advanceTimeBy(1000);scheduler.runCurrent()
+        assertEquals(last,persistence.progress[a]);assertNotNull(model.uiState.value.pendingEntryJump)
+    }
+    @Test fun oldSourceEventCannotConsumeNewJump() {
+        open();val oldSession=model.uiState.value.readerSession;open(b)
+        model.openTarget(EntryReaderTarget.Passage("entry",a,location));scheduler.runCurrent()
+        val current=model.uiState.value;val jump=requireNotNull(current.pendingEntryJump)
+        assertNotEquals(oldSession,current.readerSession)
+        model.onReaderEvent(a,ReaderEvent.PositionChanged(a,location),oldSession)
+        model.onEntryNavigationResult(a,jump.requestId,oldSession,true)
+        assertNull(model.uiState.value.currentLocation);assertEquals(jump,model.uiState.value.pendingEntryJump)
+    }
+    @Test fun consumedRequestDoesNotReappearDuringNormalProgress() {
+        model.openTarget(EntryReaderTarget.Passage("entry",a,location));scheduler.runCurrent()
+        val ui=model.uiState.value;val jump=requireNotNull(ui.pendingEntryJump)
+        model.onEntryNavigationResult(a,jump.requestId,ui.readerSession,true)
+        val next=location.copy(payloadJson="""{"href":"next.xhtml","type":"application/xhtml+xml"}""")
+        model.onReaderEvent(a,ReaderEvent.PositionChanged(a,next),ui.readerSession)
+        model.open(a);scheduler.runCurrent()
+        assertNull(model.uiState.value.pendingEntryJump);assertEquals(next,model.uiState.value.currentLocation)
+    }
+    @Test fun nativePositionAfterJumpUpdatesNormalProgress() {
+        model.openTarget(EntryReaderTarget.Passage("entry",a,location));scheduler.runCurrent()
+        val ui=model.uiState.value;val jump=requireNotNull(ui.pendingEntryJump)
+        model.onReaderEvent(a,ReaderEvent.PositionChanged(a,location),ui.readerSession)
+        scheduler.advanceTimeBy(500);scheduler.runCurrent();assertNull(persistence.progress[a])
+        model.onEntryNavigationResult(a,jump.requestId,ui.readerSession,true)
+        model.onReaderEvent(a,ReaderEvent.PositionChanged(a,location),ui.readerSession)
+        scheduler.advanceTimeBy(500);scheduler.runCurrent();assertEquals(location,persistence.progress[a])
+    }
+    @Test fun rejectedNativeJumpDoesNotClaimSuccessOrWriteProgress() {
+        model.openTarget(EntryReaderTarget.Passage("entry",a,location));scheduler.runCurrent()
+        val ui=model.uiState.value;val jump=requireNotNull(ui.pendingEntryJump)
+        model.onEntryNavigationResult(a,jump.requestId,ui.readerSession,false)
+        assertEquals(ReaderPhase.Error,model.uiState.value.phase);assertTrue(model.uiState.value.message!!.contains("unresolved"))
+        model.onReaderEvent(a,ReaderEvent.Opened(a,available),ui.readerSession)
+        assertEquals(ReaderPhase.Error,model.uiState.value.phase)
+        model.flushProgress();scheduler.runCurrent();assertNull(persistence.progress[a])
+    }
     private inner class MemoryReaderStore : ReaderStore {
         val sources = mutableMapOf<String, SourceEntity>()
         val progress = mutableMapOf<String, SavedLocation>()

@@ -38,12 +38,17 @@ data class ReaderUiState(
     val entries: List<EntryEntity> = emptyList(),
     val bookmarks: List<BookmarkEntity> = emptyList(),
     val message: String? = null,
+    val readerSession: Long = 0,
+    val pendingEntryJump: EntryJump? = null,
 )
 class ReaderViewModel(private val repository: ReaderStore, private val pdfEngineId: String? = null) : ViewModel() {
     private val state = MutableStateFlow(ReaderUiState())
     val uiState: StateFlow<ReaderUiState> = state.asStateFlow()
     private var activeId: String? = null
     private var generation = 0L
+    private var jumpSequence = 0L
+    private var rejectedJump = false
+    val hasActiveRequest: Boolean get() = activeId!=null
     private var openJob: Job? = null
     private var entriesJob: Job? = null
     private var progressJob: Job? = null
@@ -56,11 +61,15 @@ class ReaderViewModel(private val repository: ReaderStore, private val pdfEngine
 
     fun open(sourceId: String) {
         if (activeId == sourceId && state.value.phase != ReaderPhase.Error) return
+        openSource(sourceId,null)
+    }
+    private fun openSource(sourceId: String,jump: EntryJump?) {
+        rejectedJump=false
         flushProgress()
         openJob?.cancel(); entriesJob?.cancel()
         activeId = sourceId
         val token = ++generation
-        state.value = ReaderUiState()
+        state.value = ReaderUiState(readerSession=token)
         openJob = viewModelScope.launch {
             try {
                 pendingFlushes[sourceId]?.join()
@@ -77,7 +86,8 @@ class ReaderViewModel(private val repository: ReaderStore, private val pdfEngine
                         source.format == DocumentFormat.PDF && pdfEngineId == null -> ReaderPhase.Unsupported
                         else -> ReaderPhase.Opening
                     },
-                    initialLocation = progress, currentLocation = progress,
+                    initialLocation = jump?.location ?: progress, currentLocation = if(jump==null) progress else null,
+                    readerSession = token, pendingEntryJump = jump,
                     selection = draft?.capture, reflection = draft?.reflection, colorArgb = draft?.colorArgb,
                     draftSaved = draft != null, bookmarks = bookmarks,
                     message = when {
@@ -97,12 +107,34 @@ class ReaderViewModel(private val repository: ReaderStore, private val pdfEngine
             catch (_: Exception) { if (token == generation) state.update { it.copy(phase = ReaderPhase.Error, message = "Unable to open this source. Your writing is retained.") } }
         }
     }
-    fun onReaderEvent(sourceId: String, event: ReaderEvent) {
-        if (sourceId != activeId || event.sourceId != sourceId) return
+    fun openTarget(target: EntryReaderTarget) {
+        rejectedJump=false
+        if(target is EntryReaderTarget.Unavailable) {
+            flushProgress();openJob?.cancel();entriesJob?.cancel();activeId=null
+            state.value=ReaderUiState(phase=ReaderPhase.Error,message=target.reason,readerSession=++generation)
+            return
+        }
+        val sourceId=when(target) { is EntryReaderTarget.Passage -> target.sourceId; is EntryReaderTarget.Book -> target.sourceId; else -> return }
+        val jump=if(target is EntryReaderTarget.Passage) EntryJump(++jumpSequence,target.location) else null
+        if(activeId==sourceId && state.value.source!=null && state.value.phase!=ReaderPhase.Error) {
+            flushProgress()
+            state.update { it.copy(pendingEntryJump=jump,currentLocation=if(jump==null) it.currentLocation else null,
+                initialLocation=jump?.location ?: it.initialLocation,message=null) }
+        } else openSource(sourceId,jump)
+    }
+    fun onEntryNavigationResult(sourceId: String,requestId: Long,readerSession: Long,success: Boolean) {
+        if(sourceId!=activeId || readerSession!=generation || state.value.pendingEntryJump?.requestId!=requestId) return
+        rejectedJump=!success
+        state.update { it.copy(pendingEntryJump=null,phase=if(success) it.phase else ReaderPhase.Error,
+            message=if(success) null else "This saved location is unresolved. Your writing is retained.") }
+    }
+    fun onReaderEvent(sourceId: String, event: ReaderEvent, readerSession: Long? = null) {
+        if (sourceId != activeId || event.sourceId != sourceId || rejectedJump || (readerSession!=null && readerSession!=generation)) return
         when (event) {
             is ReaderEvent.Opened -> state.update { it.copy(phase = if (event.capabilities.render is CapabilityStatus.Unavailable) ReaderPhase.Unsupported else ReaderPhase.Ready, capabilities = event.capabilities, message = (event.capabilities.render as? CapabilityStatus.Unavailable)?.reason ?: it.message) }
             is ReaderEvent.Failed -> state.update { it.copy(phase = ReaderPhase.Error, message = event.userMessage) }
             is ReaderEvent.PositionChanged -> {
+                if(state.value.pendingEntryJump!=null || state.value.phase==ReaderPhase.Error) return
                 if (!compatible(event.location)) { state.update { it.copy(message = "This saved location is unresolved.") }; return }
                 state.update { it.copy(currentLocation = event.location) }
                 progressJob?.cancel()

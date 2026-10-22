@@ -79,8 +79,7 @@ fun CommonplaceApp() {
             when (destination) {
                 Destination.LIBRARY -> LibraryScreen(contentPadding)
                 Destination.NOTEBOOK -> NotebookScreen(contentPadding,{ entryId ->
-                    val entry=notebookState.detail?.takeIf { it.id==entryId } ?: notebookState.entries.find { it.id==entryId }
-                    entry?.sourceId?.let { id -> context.startActivity(android.content.Intent(context,im.commonplace.reader.ReaderActivity::class.java).putExtra("sourceId",id)) }
+                    context.startActivity(android.content.Intent(context,im.commonplace.reader.ReaderActivity::class.java).putExtra("entryId",entryId))
                 },notebook)
                 Destination.SETTINGS -> SettingsScreen(contentPadding)
             }

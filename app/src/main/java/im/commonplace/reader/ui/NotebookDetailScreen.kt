@@ -10,6 +10,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import im.commonplace.reader.data.*
 import im.commonplace.reader.reader.DocumentFormat
+import im.commonplace.reader.reader.epub.ReadiumLocations
 import java.text.DateFormat
 import java.util.Date
 
@@ -37,7 +38,11 @@ internal fun NotebookDetailScreen(padding: PaddingValues, entry: EntryEntity, so
             source?.format==DocumentFormat.PDF || entry.location?.format==DocumentFormat.PDF -> Text("PDF passages are experimental and unresolved. Your writing is retained.")
             source?.availability==SourceAvailability.MISSING -> Text("Document missing. Your writing is retained.")
             source==null && entry.kind!=EntryKind.THOUGHT -> Text("Book record missing. Your writing is retained.")
-            source?.format==DocumentFormat.EPUB -> OutlinedButton(onClick=onOpen,enabled=!busy,modifier=Modifier.fillMaxWidth().heightIn(min=48.dp)) { Text("Open book") }
+            source?.format==DocumentFormat.EPUB -> {
+                val passage=entry.kind==EntryKind.HIGHLIGHT && entry.location?.let {runCatching {ReadiumLocations.decode(it)}.isSuccess}==true
+                if(entry.kind==EntryKind.HIGHLIGHT && !passage) Text("This saved location is unresolved. Your writing is retained.")
+                else OutlinedButton(onClick=onOpen,enabled=!busy,modifier=Modifier.fillMaxWidth().heightIn(min=48.dp)) { Text(if(passage) "Open passage" else "Open book") }
+            }
         }
         Button(onClick=onEdit,enabled=!busy,modifier=Modifier.fillMaxWidth().heightIn(min=56.dp)) { Text("Edit") }
     }

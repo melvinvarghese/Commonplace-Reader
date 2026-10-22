@@ -137,6 +137,7 @@ class ReadiumHost(
                         override fun onPageLoaded() {
                             if (closed) return
                             rendered = true
+                            readyState.value = true
                             emitCapabilities()
                             scope.launch { applyHighlights() }
                         }
@@ -158,7 +159,6 @@ class ReadiumHost(
                 stage = "attach-navigator"
                 activity.supportFragmentManager.beginTransaction().replace(containerId, fragment, "readium:${source.id}").commitNow()
                 transferred = true
-                readyState.value = true
                 scope.launch { fragment.currentLocator.collect { if (!closed) event(ReaderEvent.PositionChanged(source.id, ReadiumLocations.encode(it.toJSON().toString()))) } }
                 stage = "apply-decorations"
                 applyHighlights()
@@ -213,6 +213,15 @@ class ReadiumHost(
         try {
             if (navigator?.go(decode(location)) != true) notice("This saved location is unresolved.")
         } catch (_: IllegalArgumentException) { notice("This saved location is unresolved.") }
+    }
+    fun goToEntry(location: SavedLocation): Boolean {
+        if(closed || !readyState.value) return false
+        return try { navigator?.go(decode(location))==true } catch(_: Exception) { false }
+    }
+    fun publishCurrentPosition() {
+        if(closed || !readyState.value) return
+        // A real navigator snapshot, never the requested locator synthesized as progress.
+        navigator?.currentLocator?.value?.let { event(ReaderEvent.PositionChanged(source.id,ReadiumLocations.encode(it.toJSON().toString()))) }
     }
     suspend fun search(query: String): List<SavedLocation> {
         val book = publication ?: return emptyList()

@@ -28,16 +28,16 @@ import kotlinx.coroutines.launch
 import org.json.JSONObject
 
 @Composable
-fun ReaderScreen(activity: FragmentActivity, model: ReaderViewModel, preferences: ReaderPreferences, dark: Boolean, onLibrary: () -> Unit) {
+fun ReaderScreen(activity: FragmentActivity, model: ReaderViewModel, preferences: ReaderPreferences, dark: Boolean, onLibrary: () -> Unit, exitLabel: String = "Library") {
     val state by model.uiState.collectAsStateWithLifecycle()
-    key(state.source?.id) {
+    key(state.source?.id,state.readerSession) {
         if (state.source?.format == DocumentFormat.PDF) im.commonplace.reader.reader.pdf.PdfReaderScreen(activity, model, state, onLibrary)
-        else ReaderSourceScreen(activity, model, state, preferences, dark, onLibrary)
+        else ReaderSourceScreen(activity, model, state, preferences, dark, onLibrary,exitLabel)
     }
 }
 
 @Composable
-private fun ReaderSourceScreen(activity: FragmentActivity, model: ReaderViewModel, state: ReaderUiState, preferences: ReaderPreferences, dark: Boolean, onLibrary: () -> Unit) {
+private fun ReaderSourceScreen(activity: FragmentActivity, model: ReaderViewModel, state: ReaderUiState, preferences: ReaderPreferences, dark: Boolean, onLibrary: () -> Unit, exitLabel: String) {
     val scope = rememberCoroutineScope()
     var notice by remember { mutableStateOf<String?>(null) }
     var externalUrl by remember { mutableStateOf<String?>(null) }
@@ -53,7 +53,7 @@ private fun ReaderSourceScreen(activity: FragmentActivity, model: ReaderViewMode
     val host = remember(source?.id) {
         source?.takeIf { it.format == DocumentFormat.EPUB && it.availability == im.commonplace.reader.data.SourceAvailability.AVAILABLE }?.let {
             ReadiumHost(activity, it, state.currentLocation ?: state.initialLocation,
-                event = { event -> model.onReaderEvent(it.id, event) },
+                event = { event -> model.onReaderEvent(it.id, event,state.readerSession) },
                 externalLink = { url -> externalUrl = url }, notice = { message -> notice = message })
         }
     }
@@ -61,10 +61,18 @@ private fun ReaderSourceScreen(activity: FragmentActivity, model: ReaderViewMode
     SideEffect { host?.setDarkReading(dark) }
     LaunchedEffect(host, state.highlights) { host?.setHighlights(state.highlights) }
     val nativeReady = if (host != null) host.ready.collectAsStateWithLifecycle().value else false
+    LaunchedEffect(host,nativeReady,state.pendingEntryJump?.requestId) {
+        val jump=state.pendingEntryJump
+        if(host!=null && source!=null && nativeReady && jump!=null && state.phase!=ReaderPhase.Error && state.phase!=ReaderPhase.Unsupported) {
+            val accepted=host.goToEntry(jump.location)
+            model.onEntryNavigationResult(source.id,jump.requestId,state.readerSession,accepted)
+            if(accepted) host.publishCurrentPosition()
+        }
+    }
     Surface(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize().safeDrawingPadding().imePadding()) {
             Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                TextButton(onClick = onLibrary, modifier = Modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp)) { Text("Library") }
+                TextButton(onClick = onLibrary, modifier = Modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp)) { Text(exitLabel) }
                 Text(source?.title ?: "Opening reader", style = MaterialTheme.typography.titleLarge, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f).padding(vertical = 12.dp))
             }
             Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 8.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
