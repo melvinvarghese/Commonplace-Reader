@@ -2,6 +2,8 @@
 
 **PDF decision: NO SELECTION.** This owner-approved spike is disposable. Even an entirely passing focused run would require a separate owner decision and the remaining release gates before choosing an engine. Neither rejected comparison flavor is replaced.
 
+**The single approved CI attempt failed on both API 28 and API 37.** The reader never reached its combined native-renderer/text-layer ready state, so the run produced no accepted real-selection, alignment or saved-passage evidence. A separate fixture-setup error also blocked changed-file and recovery checks. No retry, threshold relaxation or post-run prototype fix was made.
+
 ## What the prototype tries
 
 The `hybrid` flavor (`im.commonplace.reader.hybrid`) places a transparent, selectable PDF.js text layer over AndroidPdfViewer's actual native rendering and gestures. Browse mode forwards touch to the native view; Select text mode lets Android WebView produce a real selection. Keep selected passage reads that existing DOM range; it never searches for matching words to manufacture a location.
@@ -29,6 +31,33 @@ Local unit tests establish coordinate plumbing and refusal behavior only. Source
 
 ## Evidence and stop
 
-The approved focused CI attempt has **not yet been dispatched**. All Android runtime exactness gates are **NOT RUN** at this source checkpoint.
+The **one approved attempt** is [run 39727581127](https://github.com/melvinvarghese/Commonplace-Reader/actions/runs/39727581127), attempt **1**, dispatched once against source commit `33f38b13ddb194cc06747d32d74171493fc22ae2`. Both jobs completed with **FAILURE**. Each ran all four focused tests and recorded **4 failures**, followed by a failed one-case staging probe and a failed one-case verification probe. No retry is authorized or was performed.
+
+Local checks on that source passed **154 JVM tests** with zero failures/errors/skips, **96 Python tool tests**, the Node geometry/restore checks, the unmodified PDF.js asset checksums, strict Gradle dependency verification, hybrid lint and both hybrid APK assemblies. The harness's mocked adb responses are not device evidence.
+
+### What the actual run establishes
+
+Both CI lanes passed fixture regeneration/byte verification, Python/Node checks and the strict hybrid build/lint/APK step. Both installed the app and instrumentation APKs. Recorded SDKs were **28** and **37**, with WebView versions **69.0.3497.100** and **145.0.7632.218**, respectively.
+
+The ordinary document test timed out waiting to leave Opening; the repeated-page and rotated/cropped tests timed out waiting for both engines to be ready. No successful gesture-selection callback, independently measured PDF quad, native overlay comparison or persisted real capture was reached. These are observed integration readiness failures, not evidence that either standalone engine's geometry is incorrect. The precise readiness root cause is unresolved.
+
+The changed-bytes test and recovery staging probe failed during test setup with `SQLiteConstraintException: UNIQUE constraint failed: sources.checksum`. The helper gave identical fixture bytes new source UUIDs and attempted another insert into the app's checksum-unique source table. This is a prototype-harness isolation error, **not** a PDF engine defect, a changed-file rejection verdict, or one of the pre-existing notebook failures.
+
+The runner did confirm actual process death and a new launcher PID: **5766 → absent → 5836** on API 28 and **4407 → absent → 4462** on API 37. However, staging had never created the run-bound capture marker; verification failed on that missing marker. **Process mechanics passed; exact passage persistence/reopening after restart did not run.**
+
+| Required evidence | API 28 | API 37 |
+| --- | --- | --- |
+| App/instrumentation installation and exact SDK | PASS | PASS |
+| Combined PDF opening/readiness scenario | FAIL: timeout | FAIL: timeout |
+| Real selected quotation and page-two capture/save | NOT RUN: readiness blocked | NOT RUN: readiness blocked |
+| CropBox/rotation geometry ≤1 PDF point | NOT RUN | NOT RUN |
+| Native overlays ≤2 dp at 1×/2× | NOT RUN | NOT RUN |
+| Changed-file refusal with retained writing | NOT RUN: fixture setup failed | NOT RUN: fixture setup failed |
+| Force-stop/PID disappearance/fresh launcher PID | PASS: mechanics only | PASS: mechanics only |
+| Exact capture reopen after real process restart | NOT RUN: staging failed | NOT RUN: staging failed |
+
+Raw [API 28 proof/metadata](evidence/hybrid-pdf-api-28/) and [API 37 proof/metadata](evidence/hybrid-pdf-api-37/) are retained with the run's [job outcomes](evidence/hybrid-pdf-run-39727581127.json). The full CI logs and original artifacts remain attached to the linked run. A diagnostic limitation matters: the workflow's post-action logcat collection ran after the emulator action had stopped its device and captured only `- waiting for device -`. It therefore cannot identify a JavaScript, font, native-loading or callback root cause. WebView 69 is a compatibility risk, but the evidence does **not** establish it as the cause, and API 37 also failed readiness. The app-files archives contained no staged capture marker or successful per-gate screenshots. Failure-state screenshots were retained separately; they are not selection proof.
+
+This approval is exhausted. Investigating/fixing readiness or harness isolation and running another device experiment would need a new authorization; neither is silently folded into this stop. There is no release-engine decision to make from this evidence.
 
 Known same-book notebook passage-switch failures on API 28/37 and saved-capture reopening failure on API 28 are unchanged and are not attributed to this PDF spike. Tablet, spoken TalkBack, real ARM/16-KiB operation, native-source reproducibility, parser hardening, complete transitive legal clearance, performance and release acceptance are outside this focused run and remain unproven. The legacy native payload and installed WebView version are additional compatibility risks, not reasons to relax the gates.

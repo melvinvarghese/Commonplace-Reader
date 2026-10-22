@@ -1,0 +1,17 @@
+Current WebView Update Service state
+  Fallback logic enabled: true
+  Multiprocess enabled: true
+  Current WebView package (name, version): (com.android.chrome, 69.0.3497.100)
+  Minimum WebView version code: 349710067
+  Number of relros started: 2
+  Number of relros finished: 2
+  WebView package dirty: false
+  Any WebView package installed: true
+  Preferred WebView package (name, version): (com.android.chrome, 69.0.3497.100)
+  WebView packages:
+    Valid package com.android.chrome (versionName: 69.0.3497.100, versionCode: 349710067, targetSdkVersion: 28) is  installed/enabled for all users
+    Valid package com.google.android.webview (versionName: 69.0.3497.100, versionCode: 349710065, targetSdkVersion: 28) is NOT installed/enabled for all users
+    com.chrome.beta is NOT installed.
+    com.chrome.dev is NOT installed.
+    com.chrome.canary is NOT installed.
+    com.google.android.apps.chrome is NOT installed.

@@ -1,0 +1,22 @@
+{
+  "apiLabel": "api-28",
+  "actualSdk": "28",
+  "expectedSdk": "28",
+  "webviewVersion": "69.0.3497.100",
+  "runId": "3e9d78c7-e6ee-4f24-9a78-b95f18b1e10c",
+  "package": "im.commonplace.reader.hybrid",
+  "focusedPassed": false,
+  "stagePassed": false,
+  "verifyPassed": false,
+  "markerValid": false,
+  "launched": true,
+  "preStopPid": "5766",
+  "freshPid": "5836",
+  "failures": [
+    "im.commonplace.reader.reader.pdf.HybridProofTest did not execute exactly 4 passing, unskipped case(s)",
+    "im.commonplace.reader.reader.pdf.HybridRecoveryProbe#stageSelectedPassage did not execute exactly 1 passing, unskipped case(s)",
+    "hybrid recovery marker is missing",
+    "im.commonplace.reader.reader.pdf.HybridRecoveryProbe#verifyRestoredPassage did not execute exactly 1 passing, unskipped case(s)"
+  ],
+  "diagnosticErrors": []
+}

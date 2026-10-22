@@ -1,0 +1,680 @@
+$ adb install -r app/build/outputs/apk/hybrid/debug/app-hybrid-debug.apk
+exit=0
+Performing Streamed Install
+Success
+
+
+$ adb install -r app/build/outputs/apk/androidTest/hybrid/debug/app-hybrid-debug-androidTest.apk
+exit=0
+Performing Streamed Install
+Success
+
+
+$ adb shell run-as im.commonplace.reader.hybrid rm -f files/hybrid-recovery-ready.json
+exit=0
+
+
+$ adb shell am instrument -w -e class im.commonplace.reader.reader.pdf.HybridProofTest im.commonplace.reader.hybrid.test/androidx.test.runner.AndroidJUnitRunner
+exit=0
+
+im.commonplace.reader.reader.pdf.HybridProofTest:
+Error in offlineNativeRenderingAndRealTextGesture(im.commonplace.reader.reader.pdf.HybridProofTest):
+java.lang.AssertionError: Timed out: hybrid reader state
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.assertTrue(Assert.java:42)
+	at im.commonplace.reader.reader.pdf.HybridFixture.await(HybridFixture.kt:111)
+	at im.commonplace.reader.reader.pdf.HybridFixture.await$default(HybridFixture.kt:105)
+	at im.commonplace.reader.reader.pdf.HybridProofTest.waitFor(HybridProofTest.kt:45)
+	at im.commonplace.reader.reader.pdf.HybridProofTest.realGestureAndNativeRender(HybridProofTest.kt:71)
+	at im.commonplace.reader.reader.pdf.HybridProofTest.offlineNativeRenderingAndRealTextGesture(HybridProofTest.kt:52)
+
+Error in duplicateSecondPageSelectionRoomSaveAndReopen(im.commonplace.reader.reader.pdf.HybridProofTest):
+java.lang.AssertionError: Timed out: HybridPdfView attachment and both-engine ready state
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.assertTrue(Assert.java:42)
+	at im.commonplace.reader.reader.pdf.HybridFixture.await(HybridFixture.kt:111)
+	at im.commonplace.reader.reader.pdf.HybridFixture.host(HybridFixture.kt:98)
+	at im.commonplace.reader.reader.pdf.HybridFixture.host$default(HybridFixture.kt:96)
+	at im.commonplace.reader.reader.pdf.HybridProofTest.repeatedSecondPageRoomSaveAndReopen(HybridProofTest.kt:125)
+	at im.commonplace.reader.reader.pdf.HybridProofTest.duplicateSecondPageSelectionRoomSaveAndReopen(HybridProofTest.kt:60)
+
+Error in rotatedCroppedMetadataAndGeometryAtOneAndTwoTimes(im.commonplace.reader.reader.pdf.HybridProofTest):
+java.lang.AssertionError: Timed out: HybridPdfView attachment and both-engine ready state
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.assertTrue(Assert.java:42)
+	at im.commonplace.reader.reader.pdf.HybridFixture.await(HybridFixture.kt:111)
+	at im.commonplace.reader.reader.pdf.HybridFixture.host(HybridFixture.kt:98)
+	at im.commonplace.reader.reader.pdf.HybridFixture.host$default(HybridFixture.kt:96)
+	at im.commonplace.reader.reader.pdf.HybridProofTest.croppedGeometryAtBothZoomLevels(HybridProofTest.kt:94)
+	at im.commonplace.reader.reader.pdf.HybridProofTest.rotatedCroppedMetadataAndGeometryAtOneAndTwoTimes(HybridProofTest.kt:56)
+
+Error in changedBytesRejectLocationAndRetainWriting(im.commonplace.reader.reader.pdf.HybridProofTest):
+android.database.sqlite.SQLiteConstraintException: UNIQUE constraint failed: sources.checksum (code 2067 SQLITE_CONSTRAINT_UNIQUE)
+	at android.database.sqlite.SQLiteConnection.nativeExecute(Native Method)
+	at android.database.sqlite.SQLiteConnection.execute(SQLiteConnection.java:569)
+	at android.database.sqlite.SQLiteSession.execute(SQLiteSession.java:619)
+	at android.database.sqlite.SQLiteStatement.execute(SQLiteStatement.java:44)
+	at androidx.sqlite.db.framework.FrameworkSQLiteStatement.execute(FrameworkSQLiteStatement.android.kt:30)
+	at androidx.sqlite.driver.SupportSQLiteStatement$OtherSQLiteStatement.step(SupportSQLiteStatement.android.kt:588)
+	at androidx.room.EntityInsertAdapter.insert(EntityInsertAdapter.kt:59)
+	at im.commonplace.reader.data.ReaderDao_Impl.insertSource$lambda$0(ReaderDao_Impl.kt:224)
+	at im.commonplace.reader.data.ReaderDao_Impl$$ExternalSyntheticLambda1.invoke(D8$$SyntheticClass:0)
+	at androidx.room.util.DBUtil__DBUtil_androidKt$performSuspending$lambda$1$$inlined$internalPerform$1$1.invokeSuspend(DBUtil.kt:61)
+	at androidx.room.util.DBUtil__DBUtil_androidKt$performSuspending$lambda$1$$inlined$internalPerform$1$1.invoke(Unknown Source:8)
+	at androidx.room.util.DBUtil__DBUtil_androidKt$performSuspending$lambda$1$$inlined$internalPerform$1$1.invoke(Unknown Source:4)
+	at androidx.room.coroutines.PassthroughConnection.transaction(PassthroughConnectionPool.kt:127)
+	at androidx.room.coroutines.PassthroughConnection.access$transaction(PassthroughConnectionPool.kt:77)
+	at androidx.room.coroutines.PassthroughConnection$withTransaction$2.invokeSuspend(PassthroughConnectionPool.kt:103)
+	at androidx.room.coroutines.PassthroughConnection$withTransaction$2.invoke(Unknown Source:8)
+	at androidx.room.coroutines.PassthroughConnection$withTransaction$2.invoke(Unknown Source:2)
+	at androidx.room.RoomDatabaseKt__RoomDatabase_androidKt.compatTransactionCoroutineExecute(RoomDatabase.android.kt:2188)
+	at androidx.room.RoomDatabaseKt.compatTransactionCoroutineExecute(Unknown Source:1)
+	at androidx.room.RoomDatabase$createConnectionManager$3.invoke(RoomDatabase.android.kt:338)
+	at androidx.room.RoomDatabase$createConnectionManager$3.invoke(RoomDatabase.android.kt:338)
+	at androidx.room.coroutines.PassthroughConnection.withTransaction(PassthroughConnectionPool.kt:103)
+	at androidx.room.util.DBUtil__DBUtil_androidKt$performSuspending$lambda$1$$inlined$internalPerform$1.invokeSuspend(DBUtil.kt:59)
+	at androidx.room.util.DBUtil__DBUtil_androidKt$performSuspending$lambda$1$$inlined$internalPerform$1.invoke(Unknown Source:8)
+	at androidx.room.util.DBUtil__DBUtil_androidKt$performSuspending$lambda$1$$inlined$internalPerform$1.invoke(Unknown Source:4)
+	at androidx.room.coroutines.PassthroughConnectionPool$useConnection$2.invokeSuspend(PassthroughConnectionPool.kt:59)
+	at androidx.room.coroutines.PassthroughConnectionPool$useConnection$2.invoke(Unknown Source:8)
+	at androidx.room.coroutines.PassthroughConnectionPool$useConnection$2.invoke(Unknown Source:4)
+	at kotlinx.coroutines.intrinsics.UndispatchedKt.startUndispatched(Undispatched.kt:66)
+	at kotlinx.coroutines.intrinsics.UndispatchedKt.startUndispatchedOrReturn(Undispatched.kt:43)
+	at kotlinx.coroutines.BuildersKt__Builders_commonKt.withContext(Builders.common.kt:497)
+	at kotlinx.coroutines.BuildersKt.withContext(Unknown Source:1)
+	at androidx.room.coroutines.PassthroughConnectionPool.useConnection(PassthroughConnectionPool.kt:59)
+	at androidx.room.RoomConnectionManager.useConnection(RoomConnectionManager.android.kt:138)
+	at androidx.room.RoomDatabase.useConnection(RoomDatabase.android.kt:620)
+	at androidx.room.util.DBUtil__DBUtil_androidKt$performSuspending$$inlined$compatCoroutineExecute$DBUtil__DBUtil_androidKt$1.invokeSuspend(DBUtil.android.kt:261)
+	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+	at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+	at androidx.room.TransactionExecutor.execute$lambda$1$lambda$0(TransactionExecutor.android.kt:38)
+	at androidx.room.TransactionExecutor$$ExternalSyntheticLambda0.run(D8$$SyntheticClass:0)
+	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1167)
+	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:641)
+	at java.lang.Thread.run(Thread.java:764)
+
+
+Time: 87.475
+There were 4 failures:
+1) offlineNativeRenderingAndRealTextGesture(im.commonplace.reader.reader.pdf.HybridProofTest)
+java.lang.AssertionError: Timed out: hybrid reader state
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.assertTrue(Assert.java:42)
+	at im.commonplace.reader.reader.pdf.HybridFixture.await(HybridFixture.kt:111)
+	at im.commonplace.reader.reader.pdf.HybridFixture.await$default(HybridFixture.kt:105)
+	at im.commonplace.reader.reader.pdf.HybridProofTest.waitFor(HybridProofTest.kt:45)
+	at im.commonplace.reader.reader.pdf.HybridProofTest.realGestureAndNativeRender(HybridProofTest.kt:71)
+	at im.commonplace.reader.reader.pdf.HybridProofTest.offlineNativeRenderingAndRealTextGesture(HybridProofTest.kt:52)
+2) duplicateSecondPageSelectionRoomSaveAndReopen(im.commonplace.reader.reader.pdf.HybridProofTest)
+java.lang.AssertionError: Timed out: HybridPdfView attachment and both-engine ready state
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.assertTrue(Assert.java:42)
+	at im.commonplace.reader.reader.pdf.HybridFixture.await(HybridFixture.kt:111)
+	at im.commonplace.reader.reader.pdf.HybridFixture.host(HybridFixture.kt:98)
+	at im.commonplace.reader.reader.pdf.HybridFixture.host$default(HybridFixture.kt:96)
+	at im.commonplace.reader.reader.pdf.HybridProofTest.repeatedSecondPageRoomSaveAndReopen(HybridProofTest.kt:125)
+	at im.commonplace.reader.reader.pdf.HybridProofTest.duplicateSecondPageSelectionRoomSaveAndReopen(HybridProofTest.kt:60)
+3) rotatedCroppedMetadataAndGeometryAtOneAndTwoTimes(im.commonplace.reader.reader.pdf.HybridProofTest)
+java.lang.AssertionError: Timed out: HybridPdfView attachment and both-engine ready state
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.assertTrue(Assert.java:42)
+	at im.commonplace.reader.reader.pdf.HybridFixture.await(HybridFixture.kt:111)
+	at im.commonplace.reader.reader.pdf.HybridFixture.host(HybridFixture.kt:98)
+	at im.commonplace.reader.reader.pdf.HybridFixture.host$default(HybridFixture.kt:96)
+	at im.commonplace.reader.reader.pdf.HybridProofTest.croppedGeometryAtBothZoomLevels(HybridProofTest.kt:94)
+	at im.commonplace.reader.reader.pdf.HybridProofTest.rotatedCroppedMetadataAndGeometryAtOneAndTwoTimes(HybridProofTest.kt:56)
+4) changedBytesRejectLocationAndRetainWriting(im.commonplace.reader.reader.pdf.HybridProofTest)
+android.database.sqlite.SQLiteConstraintException: UNIQUE constraint failed: sources.checksum (code 2067 SQLITE_CONSTRAINT_UNIQUE)
+	at android.database.sqlite.SQLiteConnection.nativeExecute(Native Method)
+	at android.database.sqlite.SQLiteConnection.execute(SQLiteConnection.java:569)
+	at android.database.sqlite.SQLiteSession.execute(SQLiteSession.java:619)
+	at android.database.sqlite.SQLiteStatement.execute(SQLiteStatement.java:44)
+	at androidx.sqlite.db.framework.FrameworkSQLiteStatement.execute(FrameworkSQLiteStatement.android.kt:30)
+	at androidx.sqlite.driver.SupportSQLiteStatement$OtherSQLiteStatement.step(SupportSQLiteStatement.android.kt:588)
+	at androidx.room.EntityInsertAdapter.insert(EntityInsertAdapter.kt:59)
+	at im.commonplace.reader.data.ReaderDao_Impl.insertSource$lambda$0(ReaderDao_Impl.kt:224)
+	at im.commonplace.reader.data.ReaderDao_Impl$$ExternalSyntheticLambda1.invoke(D8$$SyntheticClass:0)
+	at androidx.room.util.DBUtil__DBUtil_androidKt$performSuspending$lambda$1$$inlined$internalPerform$1$1.invokeSuspend(DBUtil.kt:61)
+	at androidx.room.util.DBUtil__DBUtil_androidKt$performSuspending$lambda$1$$inlined$internalPerform$1$1.invoke(Unknown Source:8)
+	at androidx.room.util.DBUtil__DBUtil_androidKt$performSuspending$lambda$1$$inlined$internalPerform$1$1.invoke(Unknown Source:4)
+	at androidx.room.coroutines.PassthroughConnection.transaction(PassthroughConnectionPool.kt:127)
+	at androidx.room.coroutines.PassthroughConnection.access$transaction(PassthroughConnectionPool.kt:77)
+	at androidx.room.coroutines.PassthroughConnection$withTransaction$2.invokeSuspend(PassthroughConnectionPool.kt:103)
+	at androidx.room.coroutines.PassthroughConnection$withTransaction$2.invoke(Unknown Source:8)
+	at androidx.room.coroutines.PassthroughConnection$withTransaction$2.invoke(Unknown Source:2)
+	at androidx.room.RoomDatabaseKt__RoomDatabase_androidKt.compatTransactionCoroutineExecute(RoomDatabase.android.kt:2188)
+	at androidx.room.RoomDatabaseKt.compatTransactionCoroutineExecute(Unknown Source:1)
+	at androidx.room.RoomDatabase$createConnectionManager$3.invoke(RoomDatabase.android.kt:338)
+	at androidx.room.RoomDatabase$createConnectionManager$3.invoke(RoomDatabase.android.kt:338)
+	at androidx.room.coroutines.PassthroughConnection.withTransaction(PassthroughConnectionPool.kt:103)
+	at androidx.room.util.DBUtil__DBUtil_androidKt$performSuspending$lambda$1$$inlined$internalPerform$1.invokeSuspend(DBUtil.kt:59)
+	at androidx.room.util.DBUtil__DBUtil_androidKt$performSuspending$lambda$1$$inlined$internalPerform$1.invoke(Unknown Source:8)
+	at androidx.room.util.DBUtil__DBUtil_androidKt$performSuspending$lambda$1$$inlined$internalPerform$1.invoke(Unknown Source:4)
+	at androidx.room.coroutines.PassthroughConnectionPool$useConnection$2.invokeSuspend(PassthroughConnectionPool.kt:59)
+	at androidx.room.coroutines.PassthroughConnectionPool$useConnection$2.invoke(Unknown Source:8)
+	at androidx.room.coroutines.PassthroughConnectionPool$useConnection$2.invoke(Unknown Source:4)
+	at kotlinx.coroutines.intrinsics.UndispatchedKt.startUndispatched(Undispatched.kt:66)
+	at kotlinx.coroutines.intrinsics.UndispatchedKt.startUndispatchedOrReturn(Undispatched.kt:43)
+	at kotlinx.coroutines.BuildersKt__Builders_commonKt.withContext(Builders.common.kt:497)
+	at kotlinx.coroutines.BuildersKt.withContext(Unknown Source:1)
+	at androidx.room.coroutines.PassthroughConnectionPool.useConnection(PassthroughConnectionPool.kt:59)
+	at androidx.room.RoomConnectionManager.useConnection(RoomConnectionManager.android.kt:138)
+	at androidx.room.RoomDatabase.useConnection(RoomDatabase.android.kt:620)
+	at androidx.room.util.DBUtil__DBUtil_androidKt$performSuspending$$inlined$compatCoroutineExecute$DBUtil__DBUtil_androidKt$1.invokeSuspend(DBUtil.android.kt:261)
+	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+	at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+	at androidx.room.TransactionExecutor.execute$lambda$1$lambda$0(TransactionExecutor.android.kt:38)
+	at androidx.room.TransactionExecutor$$ExternalSyntheticLambda0.run(D8$$SyntheticClass:0)
+	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1167)
+	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:641)
+	at java.lang.Thread.run(Thread.java:764)
+
+FAILURES!!!
+Tests run: 4,  Failures: 4
+
+
+
+
+$ adb shell am instrument -w -e class im.commonplace.reader.reader.pdf.HybridRecoveryProbe#stageSelectedPassage -e hybridRecovery true -e hybridRun 3e9d78c7-e6ee-4f24-9a78-b95f18b1e10c im.commonplace.reader.hybrid.test/androidx.test.runner.AndroidJUnitRunner
+exit=0
+
+im.commonplace.reader.reader.pdf.HybridRecoveryProbe:
+Error in stageSelectedPassage(im.commonplace.reader.reader.pdf.HybridRecoveryProbe):
+android.database.sqlite.SQLiteConstraintException: UNIQUE constraint failed: sources.checksum (code 2067 SQLITE_CONSTRAINT_UNIQUE)
+	at android.database.sqlite.SQLiteConnection.nativeExecute(Native Method)
+	at android.database.sqlite.SQLiteConnection.execute(SQLiteConnection.java:569)
+	at android.database.sqlite.SQLiteSession.execute(SQLiteSession.java:619)
+	at android.database.sqlite.SQLiteStatement.execute(SQLiteStatement.java:44)
+	at androidx.sqlite.db.framework.FrameworkSQLiteStatement.execute(FrameworkSQLiteStatement.android.kt:30)
+	at androidx.sqlite.driver.SupportSQLiteStatement$OtherSQLiteStatement.step(SupportSQLiteStatement.android.kt:588)
+	at androidx.room.EntityInsertAdapter.insert(EntityInsertAdapter.kt:59)
+	at im.commonplace.reader.data.ReaderDao_Impl.insertSource$lambda$0(ReaderDao_Impl.kt:224)
+	at im.commonplace.reader.data.ReaderDao_Impl$$ExternalSyntheticLambda1.invoke(D8$$SyntheticClass:0)
+	at androidx.room.util.DBUtil__DBUtil_androidKt$performSuspending$lambda$1$$inlined$internalPerform$1$1.invokeSuspend(DBUtil.kt:61)
+	at androidx.room.util.DBUtil__DBUtil_androidKt$performSuspending$lambda$1$$inlined$internalPerform$1$1.invoke(Unknown Source:8)
+	at androidx.room.util.DBUtil__DBUtil_androidKt$performSuspending$lambda$1$$inlined$internalPerform$1$1.invoke(Unknown Source:4)
+	at androidx.room.coroutines.PassthroughConnection.transaction(PassthroughConnectionPool.kt:127)
+	at androidx.room.coroutines.PassthroughConnection.access$transaction(PassthroughConnectionPool.kt:77)
+	at androidx.room.coroutines.PassthroughConnection$withTransaction$2.invokeSuspend(PassthroughConnectionPool.kt:103)
+	at androidx.room.coroutines.PassthroughConnection$withTransaction$2.invoke(Unknown Source:8)
+	at androidx.room.coroutines.PassthroughConnection$withTransaction$2.invoke(Unknown Source:2)
+	at androidx.room.RoomDatabaseKt__RoomDatabase_androidKt.compatTransactionCoroutineExecute(RoomDatabase.android.kt:2188)
+	at androidx.room.RoomDatabaseKt.compatTransactionCoroutineExecute(Unknown Source:1)
+	at androidx.room.RoomDatabase$createConnectionManager$3.invoke(RoomDatabase.android.kt:338)
+	at androidx.room.RoomDatabase$createConnectionManager$3.invoke(RoomDatabase.android.kt:338)
+	at androidx.room.coroutines.PassthroughConnection.withTransaction(PassthroughConnectionPool.kt:103)
+	at androidx.room.util.DBUtil__DBUtil_androidKt$performSuspending$lambda$1$$inlined$internalPerform$1.invokeSuspend(DBUtil.kt:59)
+	at androidx.room.util.DBUtil__DBUtil_androidKt$performSuspending$lambda$1$$inlined$internalPerform$1.invoke(Unknown Source:8)
+	at androidx.room.util.DBUtil__DBUtil_androidKt$performSuspending$lambda$1$$inlined$internalPerform$1.invoke(Unknown Source:4)
+	at androidx.room.coroutines.PassthroughConnectionPool$useConnection$2.invokeSuspend(PassthroughConnectionPool.kt:59)
+	at androidx.room.coroutines.PassthroughConnectionPool$useConnection$2.invoke(Unknown Source:8)
+	at androidx.room.coroutines.PassthroughConnectionPool$useConnection$2.invoke(Unknown Source:4)
+	at kotlinx.coroutines.intrinsics.UndispatchedKt.startUndispatched(Undispatched.kt:66)
+	at kotlinx.coroutines.intrinsics.UndispatchedKt.startUndispatchedOrReturn(Undispatched.kt:43)
+	at kotlinx.coroutines.BuildersKt__Builders_commonKt.withContext(Builders.common.kt:497)
+	at kotlinx.coroutines.BuildersKt.withContext(Unknown Source:1)
+	at androidx.room.coroutines.PassthroughConnectionPool.useConnection(PassthroughConnectionPool.kt:59)
+	at androidx.room.RoomConnectionManager.useConnection(RoomConnectionManager.android.kt:138)
+	at androidx.room.RoomDatabase.useConnection(RoomDatabase.android.kt:620)
+	at androidx.room.util.DBUtil__DBUtil_androidKt$performSuspending$$inlined$compatCoroutineExecute$DBUtil__DBUtil_androidKt$1.invokeSuspend(DBUtil.android.kt:261)
+	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+	at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+	at androidx.room.TransactionExecutor.execute$lambda$1$lambda$0(TransactionExecutor.android.kt:38)
+	at androidx.room.TransactionExecutor$$ExternalSyntheticLambda0.run(D8$$SyntheticClass:0)
+	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1167)
+	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:641)
+	at java.lang.Thread.run(Thread.java:764)
+
+
+Time: 0.444
+There was 1 failure:
+1) stageSelectedPassage(im.commonplace.reader.reader.pdf.HybridRecoveryProbe)
+android.database.sqlite.SQLiteConstraintException: UNIQUE constraint failed: sources.checksum (code 2067 SQLITE_CONSTRAINT_UNIQUE)
+	at android.database.sqlite.SQLiteConnection.nativeExecute(Native Method)
+	at android.database.sqlite.SQLiteConnection.execute(SQLiteConnection.java:569)
+	at android.database.sqlite.SQLiteSession.execute(SQLiteSession.java:619)
+	at android.database.sqlite.SQLiteStatement.execute(SQLiteStatement.java:44)
+	at androidx.sqlite.db.framework.FrameworkSQLiteStatement.execute(FrameworkSQLiteStatement.android.kt:30)
+	at androidx.sqlite.driver.SupportSQLiteStatement$OtherSQLiteStatement.step(SupportSQLiteStatement.android.kt:588)
+	at androidx.room.EntityInsertAdapter.insert(EntityInsertAdapter.kt:59)
+	at im.commonplace.reader.data.ReaderDao_Impl.insertSource$lambda$0(ReaderDao_Impl.kt:224)
+	at im.commonplace.reader.data.ReaderDao_Impl$$ExternalSyntheticLambda1.invoke(D8$$SyntheticClass:0)
+	at androidx.room.util.DBUtil__DBUtil_androidKt$performSuspending$lambda$1$$inlined$internalPerform$1$1.invokeSuspend(DBUtil.kt:61)
+	at androidx.room.util.DBUtil__DBUtil_androidKt$performSuspending$lambda$1$$inlined$internalPerform$1$1.invoke(Unknown Source:8)
+	at androidx.room.util.DBUtil__DBUtil_androidKt$performSuspending$lambda$1$$inlined$internalPerform$1$1.invoke(Unknown Source:4)
+	at androidx.room.coroutines.PassthroughConnection.transaction(PassthroughConnectionPool.kt:127)
+	at androidx.room.coroutines.PassthroughConnection.access$transaction(PassthroughConnectionPool.kt:77)
+	at androidx.room.coroutines.PassthroughConnection$withTransaction$2.invokeSuspend(PassthroughConnectionPool.kt:103)
+	at androidx.room.coroutines.PassthroughConnection$withTransaction$2.invoke(Unknown Source:8)
+	at androidx.room.coroutines.PassthroughConnection$withTransaction$2.invoke(Unknown Source:2)
+	at androidx.room.RoomDatabaseKt__RoomDatabase_androidKt.compatTransactionCoroutineExecute(RoomDatabase.android.kt:2188)
+	at androidx.room.RoomDatabaseKt.compatTransactionCoroutineExecute(Unknown Source:1)
+	at androidx.room.RoomDatabase$createConnectionManager$3.invoke(RoomDatabase.android.kt:338)
+	at androidx.room.RoomDatabase$createConnectionManager$3.invoke(RoomDatabase.android.kt:338)
+	at androidx.room.coroutines.PassthroughConnection.withTransaction(PassthroughConnectionPool.kt:103)
+	at androidx.room.util.DBUtil__DBUtil_androidKt$performSuspending$lambda$1$$inlined$internalPerform$1.invokeSuspend(DBUtil.kt:59)
+	at androidx.room.util.DBUtil__DBUtil_androidKt$performSuspending$lambda$1$$inlined$internalPerform$1.invoke(Unknown Source:8)
+	at androidx.room.util.DBUtil__DBUtil_androidKt$performSuspending$lambda$1$$inlined$internalPerform$1.invoke(Unknown Source:4)
+	at androidx.room.coroutines.PassthroughConnectionPool$useConnection$2.invokeSuspend(PassthroughConnectionPool.kt:59)
+	at androidx.room.coroutines.PassthroughConnectionPool$useConnection$2.invoke(Unknown Source:8)
+	at androidx.room.coroutines.PassthroughConnectionPool$useConnection$2.invoke(Unknown Source:4)
+	at kotlinx.coroutines.intrinsics.UndispatchedKt.startUndispatched(Undispatched.kt:66)
+	at kotlinx.coroutines.intrinsics.UndispatchedKt.startUndispatchedOrReturn(Undispatched.kt:43)
+	at kotlinx.coroutines.BuildersKt__Builders_commonKt.withContext(Builders.common.kt:497)
+	at kotlinx.coroutines.BuildersKt.withContext(Unknown Source:1)
+	at androidx.room.coroutines.PassthroughConnectionPool.useConnection(PassthroughConnectionPool.kt:59)
+	at androidx.room.RoomConnectionManager.useConnection(RoomConnectionManager.android.kt:138)
+	at androidx.room.RoomDatabase.useConnection(RoomDatabase.android.kt:620)
+	at androidx.room.util.DBUtil__DBUtil_androidKt$performSuspending$$inlined$compatCoroutineExecute$DBUtil__DBUtil_androidKt$1.invokeSuspend(DBUtil.android.kt:261)
+	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
+	at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
+	at androidx.room.TransactionExecutor.execute$lambda$1$lambda$0(TransactionExecutor.android.kt:38)
+	at androidx.room.TransactionExecutor$$ExternalSyntheticLambda0.run(D8$$SyntheticClass:0)
+	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1167)
+	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:641)
+	at java.lang.Thread.run(Thread.java:764)
+
+FAILURES!!!
+Tests run: 1,  Failures: 1
+
+
+
+
+$ adb shell run-as im.commonplace.reader.hybrid /system/bin/cat files/hybrid-recovery-ready.json
+exit=1
+
+cat: files/hybrid-recovery-ready.json: No such file or directory
+
+$ adb shell am start -W -n im.commonplace.reader.hybrid/im.commonplace.reader.MainActivity
+exit=0
+Starting: Intent { cmp=im.commonplace.reader.hybrid/im.commonplace.reader.MainActivity }
+Status: ok
+Activity: im.commonplace.reader.hybrid/im.commonplace.reader.MainActivity
+ThisTime: 1257
+TotalTime: 3850
+WaitTime: 1287
+Complete
+
+
+$ adb shell pidof im.commonplace.reader.hybrid
+exit=0
+5766
+
+
+$ adb shell am force-stop im.commonplace.reader.hybrid
+exit=0
+
+
+$ adb shell pidof im.commonplace.reader.hybrid
+exit=1
+
+
+$ adb shell monkey -p im.commonplace.reader.hybrid 1
+exit=0
+  bash arg: -p
+  bash arg: im.commonplace.reader.hybrid
+  bash arg: 1
+Events injected: 1
+## Network stats: elapsed time=21ms (0ms mobile, 0ms wifi, 21ms not connected)
+
+args: [-p, im.commonplace.reader.hybrid, 1]
+ arg: "-p"
+ arg: "im.commonplace.reader.hybrid"
+ arg: "1"
+data="im.commonplace.reader.hybrid"
+
+$ adb shell pidof im.commonplace.reader.hybrid
+exit=1
+
+
+$ adb shell pidof im.commonplace.reader.hybrid
+exit=0
+5836
+
+
+$ adb shell am instrument -w -e class im.commonplace.reader.reader.pdf.HybridRecoveryProbe#verifyRestoredPassage -e hybridRecovery true -e hybridRun 3e9d78c7-e6ee-4f24-9a78-b95f18b1e10c im.commonplace.reader.hybrid.test/androidx.test.runner.AndroidJUnitRunner
+exit=0
+
+im.commonplace.reader.reader.pdf.HybridRecoveryProbe:
+Error in verifyRestoredPassage(im.commonplace.reader.reader.pdf.HybridRecoveryProbe):
+java.lang.AssertionError: The runner must preserve the durable staging marker across the confirmed force-stop
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.assertTrue(Assert.java:42)
+	at im.commonplace.reader.reader.pdf.HybridRecoveryProbe.verifyRestoredPassage(HybridRecoveryProbe.kt:82)
+
+
+Time: 0.239
+There was 1 failure:
+1) verifyRestoredPassage(im.commonplace.reader.reader.pdf.HybridRecoveryProbe)
+java.lang.AssertionError: The runner must preserve the durable staging marker across the confirmed force-stop
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.assertTrue(Assert.java:42)
+	at im.commonplace.reader.reader.pdf.HybridRecoveryProbe.verifyRestoredPassage(HybridRecoveryProbe.kt:82)
+
+FAILURES!!!
+Tests run: 1,  Failures: 1
+
+
+
+
+$ adb shell getprop ro.build.version.sdk
+exit=0
+28
+
+
+$ adb shell getprop
+exit=0
+[dalvik.vm.appimageformat]: [lz4]
+[dalvik.vm.dex2oat-Xms]: [64m]
+[dalvik.vm.dex2oat-Xmx]: [512m]
+[dalvik.vm.dex2oat-minidebuginfo]: [true]
+[dalvik.vm.dexopt.secondary]: [true]
+[dalvik.vm.heapsize]: [512m]
+[dalvik.vm.image-dex2oat-Xms]: [64m]
+[dalvik.vm.image-dex2oat-Xmx]: [64m]
+[dalvik.vm.isa.x86.features]: [default]
+[dalvik.vm.isa.x86.variant]: [x86_64]
+[dalvik.vm.isa.x86_64.features]: [default]
+[dalvik.vm.isa.x86_64.variant]: [x86_64]
+[dalvik.vm.lockprof.threshold]: [500]
+[dalvik.vm.stack-trace-dir]: [/data/anr]
+[dalvik.vm.usejit]: [true]
+[dalvik.vm.usejitprofiles]: [true]
+[debug.atrace.tags.enableflags]: [0]
+[debug.force_rtl]: [0]
+[debug.hwui.renderer]: [skiagl]
+[debug.sf.nobootanimation]: [1]
+[dev.bootcomplete]: [1]
+[drm.service.enabled]: [true]
+[gsm.current.phone-type]: [1]
+[gsm.defaultpdpcontext.active]: [true]
+[gsm.network.type]: [LTE]
+[gsm.operator.alpha]: [Android]
+[gsm.operator.iso-country]: [us]
+[gsm.operator.isroaming]: [false]
+[gsm.operator.numeric]: [310260]
+[gsm.sim.operator.alpha]: [T-Mobile]
+[gsm.sim.operator.iso-country]: [us]
+[gsm.sim.operator.numeric]: [310260]
+[gsm.sim.state]: [LOADED]
+[gsm.version.baseband]: [1.0.0.0]
+[gsm.version.ril-impl]: [android reference-ril 1.0]
+[hwservicemanager.ready]: [true]
+[init.svc.adbd]: [running]
+[init.svc.audioserver]: [running]
+[init.svc.bootanim]: [stopped]
+[init.svc.broadcastradio-hal]: [running]
+[init.svc.bugreport]: [stopped]
+[init.svc.cameraserver]: [running]
+[init.svc.clear-bcb]: [stopped]
+[init.svc.console]: [running]
+[init.svc.dhcpclient_rtr]: [running]
+[init.svc.dhcpserver]: [running]
+[init.svc.drm]: [running]
+[init.svc.dumpstate]: [stopped]
+[init.svc.dumpstatez]: [stopped]
+[init.svc.emu_hostapd]: [running]
+[init.svc.flash_recovery]: [stopped]
+[init.svc.gatekeeperd]: [running]
+[init.svc.goldfish-logcat]: [running]
+[init.svc.healthd]: [running]
+[init.svc.hidl_memory]: [running]
+[init.svc.hostapd]: [stopped]
+[init.svc.hwservicemanager]: [running]
+[init.svc.incidentd]: [running]
+[init.svc.installd]: [running]
+[init.svc.ipv6proxy]: [running]
+[init.svc.keystore]: [running]
+[init.svc.lmkd]: [running]
+[init.svc.logcatd]: [stopped]
+[init.svc.logd]: [running]
+[init.svc.logd-reinit]: [stopped]
+[init.svc.mdnsd]: [stopped]
+[init.svc.media]: [running]
+[init.svc.mediadrm]: [running]
+[init.svc.mediaextractor]: [running]
+[init.svc.mediametrics]: [running]
+[init.svc.mtpd]: [stopped]
+[init.svc.netd]: [running]
+[init.svc.netmgr]: [running]
+[init.svc.perfprofd]: [running]
+[init.svc.qemu-props]: [running]
+[init.svc.racoon]: [stopped]
+[init.svc.ranchu-net]: [stopped]
+[init.svc.ranchu-setup]: [stopped]
+[init.svc.servicemanager]: [running]
+[init.svc.setup-bcb]: [stopped]
+[init.svc.statsd]: [running]
+[init.svc.storaged]: [running]
+[init.svc.surfaceflinger]: [running]
+[init.svc.thermalservice]: [running]
+[init.svc.tombstoned]: [running]
+[init.svc.traced]: [stopped]
+[init.svc.traced_probes]: [stopped]
+[init.svc.ueventd]: [running]
+[init.svc.uncrypt]: [stopped]
+[init.svc.usbd]: [stopped]
+[init.svc.vndservicemanager]: [running]
+[init.svc.vold]: [running]
+[init.svc.wificond]: [running]
+[init.svc.wpa_supplicant]: [running]
+[init.svc.zygote]: [running]
+[init.svc.zygote_secondary]: [running]
+[keyguard.no_require_sim]: [true]
+[log.tag.WifiHAL]: [D]
+[log.tag.stats_log]: [I]
+[logd.logpersistd.enable]: [true]
+[media.mediadrmservice.enable]: [true]
+[net.bt.name]: [Android]
+[net.qtaguid_enabled]: [1]
+[net.tcp.default_init_rwnd]: [60]
+[persist.sys.dalvik.vm.lib.2]: [libart.so]
+[persist.sys.gps.lpp]: [0]
+[persist.sys.timezone]: [Etc/UTC]
+[persist.sys.usb.config]: [adb]
+[persist.sys.webview.vmsize]: [141300560]
+[persist.traced.enable]: [1]
+[pm.dexopt.ab-ota]: [speed-profile]
+[pm.dexopt.bg-dexopt]: [speed-profile]
+[pm.dexopt.boot]: [verify]
+[pm.dexopt.first-boot]: [quicken]
+[pm.dexopt.inactive]: [verify]
+[pm.dexopt.install]: [speed-profile]
+[pm.dexopt.priv-apps-oob]: [false]
+[pm.dexopt.priv-apps-oob-list]: [ALL]
+[pm.dexopt.shared]: [speed]
+[qemu.gles]: [1]
+[qemu.hw.mainkeys]: [1]
+[qemu.logcat]: [start]
+[qemu.sf.fake_camera]: [back]
+[qemu.sf.lcd_density]: [160]
+[qemu.timezone]: [Etc/UTC]
+[ro.actionable_compatible_property.enabled]: [true]
+[ro.adb.secure]: [0]
+[ro.allow.mock.location]: [0]
+[ro.art.hiddenapi.warning]: [1]
+[ro.baseband]: [unknown]
+[ro.bionic.ld.warning]: [1]
+[ro.board.platform]: []
+[ro.boot.android_dt_dir]: [/sys/bus/platform/devices/ANDR0001:00/properties/android/]
+[ro.boot.hardware]: [ranchu]
+[ro.boot.serialno]: [EMULATOR37X2X12X0]
+[ro.boot.verifiedbootstate]: [orange]
+[ro.boot.veritymode]: [enforcing]
+[ro.bootimage.build.date]: [Wed Aug 5 02:28:37 UTC 2020]
+[ro.bootimage.build.date.utc]: [1596594517]
+[ro.bootimage.build.fingerprint]: [google/sdk_gphone_x86_64/generic_x86_64:9/PSR1.180720.122/6736742:userdebug/dev-keys]
+[ro.bootloader]: [unknown]
+[ro.bootmode]: [unknown]
+[ro.build.characteristics]: [emulator]
+[ro.build.date]: [Wed Aug  5 02:28:37 UTC 2020]
+[ro.build.date.utc]: [1596594517]
+[ro.build.description]: [sdk_gphone_x86_64-userdebug 9 PSR1.180720.122 6736742 dev-keys]
+[ro.build.display.id]: [sdk_gphone_x86_64-userdebug 9 PSR1.180720.122 6736742 dev-keys]
+[ro.build.fingerprint]: [google/sdk_gphone_x86_64/generic_x86_64:9/PSR1.180720.122/6736742:userdebug/dev-keys]
+[ro.build.flavor]: [sdk_gphone_x86_64-userdebug]
+[ro.build.host]: [abfarm-us-west1-c-0090]
+[ro.build.id]: [PSR1.180720.122]
+[ro.build.product]: [generic_x86_64]
+[ro.build.system_root_image]: [true]
+[ro.build.tags]: [dev-keys]
+[ro.build.type]: [userdebug]
+[ro.build.user]: [android-build]
+[ro.build.version.all_codenames]: [REL]
+[ro.build.version.base_os]: []
+[ro.build.version.codename]: [REL]
+[ro.build.version.incremental]: [6736742]
+[ro.build.version.min_supported_target_sdk]: [17]
+[ro.build.version.preview_sdk]: [0]
+[ro.build.version.release]: [9]
+[ro.build.version.sdk]: [28]
+[ro.build.version.security_patch]: [2019-08-05]
+[ro.carrier]: [unknown]
+[ro.com.android.dataroaming]: [true]
+[ro.com.google.acsa]: [true]
+[ro.com.google.locationfeatures]: [1]
+[ro.config.alarm_alert]: [Alarm_Classic.ogg]
+[ro.config.nocheckin]: [yes]
+[ro.config.notification_sound]: [pixiedust.ogg]
+[ro.config.ringtone]: [Ring_Synth_04.ogg]
+[ro.control_privapp_permissions]: [disable]
+[ro.cp_system_other_odex]: [0]
+[ro.crypto.fs_crypto_blkdev]: [/dev/block/dm-1]
+[ro.crypto.state]: [encrypted]
+[ro.crypto.type]: [block]
+[ro.dalvik.vm.native.bridge]: [0]
+[ro.debuggable]: [1]
+[ro.device_owner]: [false]
+[ro.hardware]: [ranchu]
+[ro.hardware.audio.primary]: [goldfish]
+[ro.hardware.power]: [ranchu]
+[ro.kernel.PARTUUID]: [863F0C5C-FE9A-4699-A68F-8B2D279829A7]
+[ro.kernel.android.bootanim]: [0]
+[ro.kernel.android.qemud]: [1]
+[ro.kernel.androidboot.android_dt_dir]: [/sys/bus/platform/devices/ANDR0001:00/properties/android/]
+[ro.kernel.androidboot.hardware]: [ranchu]
+[ro.kernel.androidboot.serialno]: [EMULATOR37X2X12X0]
+[ro.kernel.androidboot.verifiedbootstate]: [orange]
+[ro.kernel.androidboot.veritymode]: [enforcing]
+[ro.kernel.clocksource]: [pit]
+[ro.kernel.cma]: [260M@0-4G]
+[ro.kernel.console]: [ttyS0,38400]
+[ro.kernel.dm]: ["1]
+[ro.kernel.earlyprintk]: [ttyS0]
+[ro.kernel.init]: [/init]
+[ro.kernel.loop.max_part]: [7]
+[ro.kernel.mac80211_hwsim.channels]: [2]
+[ro.kernel.mac80211_hwsim.mac_prefix]: [5554]
+[ro.kernel.mac80211_hwsim.radios]: [2]
+[ro.kernel.memmap]: [0x10000$0xff018000]
+[ro.kernel.printk.devkmsg]: [on]
+[ro.kernel.qemu]: [1]
+[ro.kernel.qemu.avd_name]: [test]
+[ro.kernel.qemu.camera_hq_edge_processing]: [0]
+[ro.kernel.qemu.dalvik.vm.heapsize]: [512m]
+[ro.kernel.qemu.encrypt]: [1]
+[ro.kernel.qemu.gles]: [1]
+[ro.kernel.qemu.gltransport]: [pipe]
+[ro.kernel.qemu.gltransport.drawFlushInterval]: [800]
+[ro.kernel.qemu.opengles.version]: [196608]
+[ro.kernel.qemu.settings.system.screen_off_timeout]: [2147483647]
+[ro.kernel.qemu.skin]: [320x640]
+[ro.kernel.qemu.uirenderer]: [skiagl]
+[ro.kernel.qemu.vsync]: [60]
+[ro.kernel.qemu.wifi]: [1]
+[ro.kernel.ramoops.mem_address]: [0xff018000]
+[ro.kernel.ramoops.mem_size]: [0x10000]
+[ro.kernel.root]: [/dev/dm-0]
+[ro.logd.size.stats]: [64K]
+[ro.opengles.version]: [196608]
+[ro.product.board]: [goldfish_x86_64]
+[ro.product.brand]: [google]
+[ro.product.cpu.abi]: [x86_64]
+[ro.product.cpu.abilist]: [x86_64,x86]
+[ro.product.cpu.abilist32]: [x86]
+[ro.product.cpu.abilist64]: [x86_64]
+[ro.product.device]: [generic_x86_64]
+[ro.product.first_api_level]: [28]
+[ro.product.locale]: [en-US]
+[ro.product.manufacturer]: [Google]
+[ro.product.model]: [Android SDK built for x86_64]
+[ro.product.name]: [sdk_gphone_x86_64]
+[ro.product.vendor.brand]: [google]
+[ro.product.vendor.device]: [generic_x86_64]
+[ro.product.vendor.manufacturer]: [Google]
+[ro.product.vendor.model]: [Android SDK built for x86_64]
+[ro.product.vendor.name]: [sdk_gphone_x86_64]
+[ro.property_service.version]: [2]
+[ro.revision]: [0]
+[ro.secure]: [1]
+[ro.serialno]: [EMULATOR37X2X12X0]
+[ro.setupwizard.mode]: [DISABLED]
+[ro.treble.enabled]: [true]
+[ro.vendor.build.date]: [Wed Aug 5 02:28:37 UTC 2020]
+[ro.vendor.build.date.utc]: [1596594517]
+[ro.vendor.build.fingerprint]: [google/sdk_gphone_x86_64/generic_x86_64:9/PSR1.180720.122/6736742:userdebug/dev-keys]
+[ro.vendor.build.security_patch]: []
+[ro.vndk.version]: [28]
+[ro.wifi.channels]: []
+[ro.zygote]: [zygote64_32]
+[security.perf_harden]: [1]
+[selinux.restorecon_recursive]: [/data/misc_ce/0]
+[service.bootanim.exit]: [1]
+[service.sf.present_timestamp]: [0]
+[sys.boot_completed]: [1]
+[sys.logbootcomplete]: [0]
+[sys.rescue_boot_count]: [2]
+[sys.retaildemo.enabled]: [0]
+[sys.sysctl.extra_free_kbytes]: [2400]
+[sys.sysctl.tcp_def_init_rwnd]: [60]
+[sys.uidcpupower]: []
+[sys.usb.config]: [adb]
+[sys.usb.configfs]: [0]
+[sys.usb.state]: [adb]
+[sys.user.0.ce_available]: [true]
+[sys.wifitracing.started]: [1]
+[tombstoned.max_tombstone_count]: [50]
+[vendor.qemu.android.bootanim]: [0]
+[vendor.qemu.dev.bootcomplete]: [1]
+[vold.decrypt]: [trigger_restart_framework]
+[vold.encrypt_progress]: [100]
+[vold.encrypt_time_remaining]: [0]
+[vold.has_adoptable]: [1]
+[vold.has_quota]: [1]
+[vold.has_reserved]: [1]
+[vold.post_fs_data_done]: [1]
+[wifi.direct.interface]: [p2p-dev-wlan0]
+[wifi.interface]: [wlan0]
+[xmpp.auto-presence]: [true]
+
+
+$ adb shell dumpsys webviewupdate
+exit=0
+Current WebView Update Service state
+  Fallback logic enabled: true
+  Multiprocess enabled: true
+  Current WebView package (name, version): (com.android.chrome, 69.0.3497.100)
+  Minimum WebView version code: 349710067
+  Number of relros started: 2
+  Number of relros finished: 2
+  WebView package dirty: false
+  Any WebView package installed: true
+  Preferred WebView package (name, version): (com.android.chrome, 69.0.3497.100)
+  WebView packages:
+    Valid package com.android.chrome (versionName: 69.0.3497.100, versionCode: 349710067, targetSdkVersion: 28) is  installed/enabled for all users
+    Valid package com.google.android.webview (versionName: 69.0.3497.100, versionCode: 349710065, targetSdkVersion: 28) is NOT installed/enabled for all users
+    com.chrome.beta is NOT installed.
+    com.chrome.dev is NOT installed.
+    com.chrome.canary is NOT installed.
+    com.google.android.apps.chrome is NOT installed.
+
+
+$ adb exec-out run-as im.commonplace.reader.hybrid tar -cf - files
+exit=0
+<binary 74240 bytes>
+
+$ adb exec-out screencap -p
+exit=0
+<binary 84684 bytes>
+
