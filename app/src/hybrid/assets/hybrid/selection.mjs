@@ -8,6 +8,9 @@ globalThis.pdfjsWorker = pdfjsWorker;
 const host = document.querySelector('#page');
 const state = { pdf: null, loading: null, page: null, pageIndex: -1, viewport: null, frame: null, spans: [], queue: Promise.resolve(), generation: 0 };
 const finitePositive = value => Number.isFinite(value) && value > 0;
+function clearHost() {
+  while (host.firstChild) host.removeChild(host.firstChild);
+}
 
 function bridge(data) {
   globalThis.HybridBridge.message(JSON.stringify(data));
@@ -15,29 +18,38 @@ function bridge(data) {
 }
 
 function reportError(error) {
-  bridge({ type: 'error', message: error instanceof Error ? error.message : String(error) });
+  bridge({ type: 'error', message: error instanceof Error ? error.message : String(error), frame: state.frame && { ...state.frame } });
 }
 
 async function loadDocument() {
   if (state.pdf) return;
   if (!state.loading) state.loading = (async () => {
+    bridge({ type: 'diagnostic', stage: 'document-fetch' });
     const response = await fetch('/document.pdf', { credentials: 'same-origin', redirect: 'error' });
     if (!response.ok) throw new Error(`PDF fetch failed (${response.status})`);
     const bytes = new Uint8Array(await response.arrayBuffer());
-    return pdfjs.getDocument({ data: bytes, isEvalSupported: false, useSystemFonts: false, disableFontFace: false }).promise;
+    const worker = new pdfjs.PDFWorker({ name: 'commonplace-hybrid' });
+    await worker.promise;
+    const workerMode = typeof Worker !== 'undefined' && worker.port instanceof Worker ? 'real-worker' : 'in-process';
+    bridge({ type: 'diagnostic', stage: 'worker-ready', workerMode });
+    const pdf = await pdfjs.getDocument({ data: bytes, worker, isEvalSupported: false, useSystemFonts: false, disableFontFace: false }).promise;
+    bridge({ type: 'diagnostic', stage: 'document-loaded', pages: pdf.numPages, workerMode });
+    return pdf;
   })();
   try { state.pdf = await state.loading; }
   finally { state.loading = null; }
 }
 
 function frameIsValid(frame) {
-  return frame && Number.isInteger(frame.pageIndex) && frame.pageIndex >= 0 &&
+  return frame && Number.isSafeInteger(frame.requestId) && frame.requestId > 0 &&
+    Number.isInteger(frame.pageIndex) && frame.pageIndex >= 0 &&
     finitePositive(frame.widthPx) && finitePositive(frame.heightPx) &&
     [frame.leftPx, frame.topPx, frame.density, frame.zoom].every(Number.isFinite) && frame.density > 0 && frame.zoom > 0;
 }
 
 async function renderFrame(frame, generation) {
   if (!frameIsValid(frame)) throw new TypeError('invalid native page frame');
+  bridge({ type: 'diagnostic', stage: 'render-start', frame: { ...frame } });
   if (!state.pdf) await loadDocument();
   if (generation !== state.generation) return;
   if (frame.pageIndex >= state.pdf.numPages) throw new RangeError('page index is outside the PDF');
@@ -53,7 +65,8 @@ async function renderFrame(frame, generation) {
   layer.style.setProperty('--scale-factor', viewport.scale);
   layer.style.width = `${viewport.width}px`;
   layer.style.height = `${viewport.height}px`;
-  host.replaceChildren(layer);
+  clearHost();
+  host.appendChild(layer);
   host.style.left = `${frame.leftPx / frame.density}px`;
   host.style.top = `${frame.topPx / frame.density}px`;
   host.style.width = `${cssWidth}px`;
@@ -61,6 +74,7 @@ async function renderFrame(frame, generation) {
 
   const textContent = await page.getTextContent();
   if (generation !== state.generation) return;
+  bridge({ type: 'diagnostic', stage: 'text-content-loaded', frame: { ...frame } });
   await new pdfjs.TextLayer({ textContentSource: textContent, container: layer, viewport }).render();
   if (generation !== state.generation) return;
   state.page = page;
@@ -74,7 +88,7 @@ async function renderFrame(frame, generation) {
 
 window.hybridFrame = frame => {
   const generation = ++state.generation;
-  host.replaceChildren();
+  clearHost();
   state.page = null;
   state.viewport = null;
   state.frame = null;
@@ -86,7 +100,7 @@ window.hybridFrame = frame => {
 };
 
 function spanAndOffset(node, offset) {
-  const span = node.nodeType === Node.ELEMENT_NODE ? node.closest('span') : node.parentElement?.closest('span');
+  const span = node.nodeType === Node.ELEMENT_NODE ? node.closest('span') : node.parentElement && node.parentElement.closest('span');
   if (!span || !host.contains(span)) throw new Error('selection endpoint is outside the active text layer');
   const spanIndex = state.spans.indexOf(span);
   if (spanIndex < 0) throw new Error('selection endpoint is not in a text-layer span');
@@ -156,7 +170,7 @@ window.hybridRestore = saved => {
   try {
     if (!saved || !state.page || !state.viewport || !state.frame) throw new Error('no active page is ready for restoration');
     const payload = saved.payload && typeof saved.payload === 'object' ? saved.payload : saved;
-    const quotation = saved.quotation ?? payload.quotation;
+    const quotation = saved.quotation === null || saved.quotation === undefined ? payload.quotation : saved.quotation;
     if (payload.pageIndex !== state.pageIndex || payload.rotationDegrees !== state.page.rotate ||
         payload.coordinateSpace !== 'unrotated-pdf-points' || !Array.isArray(payload.pageBox) ||
         payload.pageBox.length !== state.page.view.length || payload.pageBox.some((value, i) => value !== state.page.view[i])) {
@@ -184,6 +198,6 @@ window.hybridRestore = saved => {
   } catch (error) { return reportError(error); }
 };
 
-window.addEventListener('DOMContentLoaded', () => {
-  loadDocument().catch(reportError);
-}, { once: true });
+// Module scripts run after the page DOM is parsed; announce only installed handlers.
+bridge({ type: 'scriptReady' });
+loadDocument().catch(reportError);

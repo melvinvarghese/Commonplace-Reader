@@ -1,0 +1,12 @@
+{
+  "name": "commonplace-reader-tooling",
+  "private": true,
+  "scripts": {
+    "build:hybrid-pdfjs": "node tools/build_hybrid_pdfjs.mjs",
+    "test:hybrid-compatibility": "node tools/test_hybrid_compatibility.mjs"
+  },
+  "devDependencies": {
+    "acorn": "8.18.0",
+    "esbuild": "0.25.12"
+  }
+}

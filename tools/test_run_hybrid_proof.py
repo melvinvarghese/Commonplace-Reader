@@ -43,6 +43,7 @@ class HybridProofRunnerTest(unittest.TestCase):
             f"{runner.RECOVERY_PROBE}#verifyRestoredPassage": verify,
         }
         binary = binary or {"tar": self.tar_bytes(), "screenshot": b"\x89PNG\r\n\x1a\nproof"}
+        logcat = "10-22 12:00:00.000 I/HybridProof: startup native-loaded; pages=2\n10-22 12:00:00.001 E/AndroidRuntime: FATAL EXCEPTION: main\n10-22 12:00:00.002 E/AndroidRuntime: java.lang.AssertionError: synthetic diagnostic\n"
 
         def adb(command, **kwargs):
             calls.append((command, kwargs))
@@ -53,7 +54,7 @@ class HybridProofRunnerTest(unittest.TestCase):
                 try:
                     return next(pid_responses)
                 except StopIteration:
-                    return subprocess.CompletedProcess(command, 1, "", "")
+                    return subprocess.CompletedProcess(command, 0, fresh + "\n", "")
             if command[-1:] == ["ro.build.version.sdk"]:
                 return subprocess.CompletedProcess(command, 0, sdk, "")
             if command[-1:] == ["getprop"]:
@@ -66,6 +67,8 @@ class HybridProofRunnerTest(unittest.TestCase):
                 return subprocess.CompletedProcess(command, 0, binary.get("tar", b""), b"")
             if "exec-out" in command and "screencap" in command:
                 return subprocess.CompletedProcess(command, 0, binary.get("screenshot", b""), b"")
+            if command[1:3] == ["logcat", "-d"]:
+                return subprocess.CompletedProcess(command, 0, logcat, "")
             return subprocess.CompletedProcess(command, 0, "", "")
 
         with tempfile.TemporaryDirectory() as directory, \
@@ -106,6 +109,13 @@ class HybridProofRunnerTest(unittest.TestCase):
         self.assertIn("run-as", log)
         self.assertIn("properties.txt", artifacts)
         self.assertIn("webview-version.txt", artifacts)
+        self.assertIn("logcat.txt", artifacts)
+        readiness = json.loads(artifacts["readiness.json"])
+        self.assertEqual(readiness["status"], "pass")
+        self.assertTrue(readiness["appProcessAlive"])
+        self.assertTrue(any("startup native-loaded" in line for line in readiness["evidence"]))
+        self.assertIn("10-22 12:00:00.002 E/AndroidRuntime: java.lang.AssertionError: synthetic diagnostic",
+                      readiness["exceptions"])
         tar_path = next(name for name in artifacts if name.endswith("app-files.tar"))
         with tarfile.open(fileobj=io.BytesIO(artifacts[tar_path])) as archive:
             self.assertIn("files/hybrid-proof/snapshot.json", archive.getnames())
@@ -160,6 +170,10 @@ class HybridProofRunnerTest(unittest.TestCase):
         ok, _, _, _, artifacts = self.exercise(focused="FAILURES!!!\n")
         self.assertFalse(ok)
         self.assertEqual(artifacts["failure.png"], b"\x89PNG\r\n\x1a\nproof")
+        self.assertIn("logcat.txt", artifacts)
+        readiness = json.loads(artifacts["readiness.json"])
+        self.assertEqual(readiness["status"], "fail")
+        self.assertTrue(readiness["appProcessAlive"])
 
     def test_missing_or_wrong_run_marker_fails(self):
         for marker in ("", json.dumps({"runId": "other", "sourceId": "s"}),

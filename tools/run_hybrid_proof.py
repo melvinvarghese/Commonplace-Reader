@@ -10,6 +10,7 @@ import sys
 import tarfile
 import time
 import uuid
+from datetime import datetime, timezone
 from pathlib import Path
 
 REPORTS = Path("build/reports/hybrid-proof")
@@ -108,6 +109,40 @@ def run_proof(api_label="api-unknown"):
             return
         (folder / "failure.png").write_bytes(payload)
 
+    def capture_readiness():
+        # Capture while the launcher/recovery process is still alive, before this
+        # runner returns control to the emulator owner.
+        live = command(["shell", "pidof", PACKAGE], timeout=5)
+        pid = (live.stdout or "").strip()
+        process_alive = live.returncode == 0 and bool(pid) and not (live.stderr or "").strip()
+        if not process_alive:
+            record_failure("could not capture readiness evidence while the hybrid app process was alive")
+        result = command(["logcat", "-d", "-v", "threadtime"], timeout=30)
+        logcat = result.stdout or ""
+        if result.returncode != 0 or not logcat.strip():
+            record_failure("could not capture nonempty logcat diagnostics before returning")
+            logcat = logcat or (result.stderr or "")
+        else:
+            (folder / "logcat.txt").write_text(logcat)
+        evidence = [line for line in logcat.splitlines()
+                    if any(token in line for token in
+                           ("HybridProof", "startup", "workerMode", "pageInfo", "PASS gate=", "FAIL"))]
+        exceptions = [line for line in logcat.splitlines()
+                      if re.search(r"FATAL EXCEPTION|(?:[A-Za-z0-9_.$]+)?Exception|AssertionError|Error:", line)]
+        readiness = {
+            "capturedAtUtc": datetime.now(timezone.utc).isoformat(),
+            "apiLabel": api_label,
+            "runId": run_id,
+            "status": "fail" if failures else "pass",
+            "appProcessAlive": process_alive,
+            "appPid": pid,
+            "instrumentationPassed": {"focused": focused_ok, "stage": stage_ok, "verify": verify_ok},
+            "evidence": evidence,
+            "exceptions": exceptions,
+            "failures": list(failures),
+        }
+        (folder / "readiness.json").write_text(json.dumps(readiness, indent=2) + "\n")
+
     print(f"{api_label}: one-shot hybrid PDF.js passage recovery proof (run {run_id})", flush=True)
     for apk in (
             "app/build/outputs/apk/hybrid/debug/app-hybrid-debug.apk",
@@ -181,6 +216,7 @@ def run_proof(api_label="api-unknown"):
     if not webview_version:
         diagnostic_error("could not identify the installed WebView version")
     capture_archive()
+    capture_readiness()
     if failures:
         capture_failure_screenshot()
     metadata = {

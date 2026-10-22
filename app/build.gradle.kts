@@ -64,6 +64,32 @@ android {
     }
 }
 
+val generateHybridPdfJs = tasks.register<Exec>("generateHybridPdfJs") {
+    group = "build"
+    description = "Transpile the pinned PDF.js 4.10.38 modules for Android WebView 69."
+    workingDir(rootProject.projectDir)
+    commandLine("npm", "run", "build:hybrid-pdfjs")
+    inputs.files(
+        rootProject.file("package.json"),
+        rootProject.file("package-lock.json"),
+        rootProject.file("tools/build_hybrid_pdfjs.mjs"),
+        rootProject.file("third_party/licenses/hybrid/pdfjs-4.10.38.sha256"),
+        rootProject.file("third_party/vendor/pdfjs-4.10.38/pdf.mjs"),
+        rootProject.file("third_party/vendor/pdfjs-4.10.38/pdf.worker.mjs"),
+    )
+    outputs.files(
+        file("src/hybrid/assets/hybrid/pdf.mjs"),
+        file("src/hybrid/assets/hybrid/pdf.worker.mjs"),
+        file("src/hybrid/assets/hybrid/pdfjs-build.json"),
+    )
+}
+
+tasks.matching {
+    (it.name.startsWith("mergeHybrid") && it.name.endsWith("Assets")) ||
+        it.name.startsWith("lintAnalyzeHybrid") ||
+        (it.name.startsWith("generateHybrid") && it.name.contains("Lint") && it.name.endsWith("Model"))
+}.configureEach { dependsOn(generateHybridPdfJs) }
+
 kotlin {
     jvmToolchain(17)
     compilerOptions {

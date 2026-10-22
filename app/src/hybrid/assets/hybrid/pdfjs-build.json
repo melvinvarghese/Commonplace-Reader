@@ -1,0 +1,15 @@
+{
+  "pdfjsVersion": "4.10.38",
+  "esbuildVersion": "0.25.12",
+  "target": [
+    "chrome69"
+  ],
+  "sources": {
+    "pdf.mjs": "081d3b6f426d38a8029766f8839f505e9cbf2c81a71d62c26eada142e6c21ae4",
+    "pdf.worker.mjs": "5e9f76bd5e65fbd1602b29fc50e50490aeeacd34a715b2282b73f7e8029242e0"
+  },
+  "outputs": {
+    "pdf.mjs": "89eae67085cddd7b539dc9caf8cb666a7cdd60ebbc84a7058729975cffba304f",
+    "pdf.worker.mjs": "db7a24c103c2413e9b77bdf7555bb8e17daac85c2de54333ec1b0c9ddb934656"
+  }
+}

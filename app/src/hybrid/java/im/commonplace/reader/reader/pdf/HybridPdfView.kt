@@ -40,7 +40,17 @@ class HybridPdfView(
     private var sourceFile: File? = null
     private var closed = false
     private var loaded = false
-    private var sentFrame: String? = null
+    private val handshake = HybridFrameHandshake()
+    private val startupDiagnostics = JSONObject()
+    private var startupPhase = "created"
+
+    /** Read on the UI thread; instrumentation logs this before a readiness timeout. */
+    fun diagnosticSnapshot(): JSONObject = JSONObject()
+        .put("phase", startupPhase).put("ready", ready).put("nativeLoaded", loaded)
+        .put("failure", failure ?: JSONObject.NULL).put("closed", closed)
+        .put("pageIndex", native.currentPage).put("zoom", native.zoom.toDouble())
+        .put("frame", frame ?: JSONObject.NULL).put("pageInfo", pageInfo ?: JSONObject.NULL)
+        .put("javascript", JSONObject(startupDiagnostics.toString()))
     private var pendingLocation: SavedLocation? = null
     private var drawingLocation: SavedLocation? = null
     private val paint = Paint().apply { color = 0x66578255; style = Paint.Style.FILL }
@@ -95,8 +105,24 @@ class HybridPdfView(
         }
         web.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest) = true
+            override fun onPageStarted(view: WebView, url: String, favicon: android.graphics.Bitmap?) {
+                if (closed) return
+                handshake.resetReceiver()
+                invalidateReadiness()
+                android.util.Log.i("HybridProof", "startup web-page-started")
+            }
             override fun onPageFinished(view: WebView, url: String) {
-                if (!closed) { sentFrame = null; native.invalidate() }
+                if (!closed) {
+                    android.util.Log.i("HybridProof", "startup web-page-finished; loaded=$loaded; frame=$frame")
+                    dispatchFrame()
+                    native.invalidate()
+                }
+            }
+            override fun onReceivedError(view: WebView, request: WebResourceRequest, error: android.webkit.WebResourceError) {
+                android.util.Log.e("HybridProof", "startup web-resource-error; path=${request.url.path}; code=${error.errorCode}; ${error.description}")
+            }
+            override fun onReceivedHttpError(view: WebView, request: WebResourceRequest, response: WebResourceResponse) {
+                android.util.Log.e("HybridProof", "startup web-http-error; path=${request.url.path}; status=${response.statusCode}")
             }
             override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse {
                 val uri = request.url
@@ -110,10 +136,13 @@ class HybridPdfView(
                     } else {
                         val name = uri.path?.removePrefix("/hybrid/") ?: return denied()
                         if (uri.path != "/hybrid/$name" || name !in ASSETS) return denied()
-                        val mime = when { name.endsWith(".mjs") -> "text/javascript"; name.endsWith(".css") -> "text/css"; else -> "text/html" }
+                        val mime = when { (name.endsWith(".mjs") || name.endsWith(".js")) -> "text/javascript"; name.endsWith(".css") -> "text/css"; else -> "text/html" }
                         WebResourceResponse(mime, "UTF-8", context.assets.open("hybrid/$name"))
                     }
-                } catch (_: Exception) { denied() }
+                } catch (error: Exception) {
+                    android.util.Log.e("HybridProof", "startup local-resource-failed; path=${uri.path}", error)
+                    denied()
+                }
             }
         }
         web.setOnTouchListener { _, motion -> if (selecting) false else native.dispatchTouchEvent(motion) }
@@ -130,20 +159,31 @@ class HybridPdfView(
                 }
                 ensureActive()
                 if (closed) return@launch
+                startupPhase = "source-verified"
+                android.util.Log.i("HybridProof", "startup source-verified; opening-both-engines")
                 web.loadUrl("https://commonplace.invalid/hybrid/index.html")
                 native.fromFile(sourceFile!!).enableSwipe(true).enableDoubletap(true)
                     .enableAnnotationRendering(false).linkHandler { /* No document URL activation. */ }
                     .pageFitPolicy(FitPolicy.WIDTH).spacing(0).autoSpacing(false)
-                    .onLoad { count -> loaded = true; pageCount = count }
-                    .onError { fail("Hybrid native renderer could not open this PDF. Your writing is retained.") }
-                    .onPageError { _, _ -> fail("Hybrid native page rendering failed. Your writing is retained.") }
+                    .onLoad { count ->
+                        loaded = true; pageCount = count
+                        startupPhase = "native-loaded"
+                        android.util.Log.i("HybridProof", "startup native-loaded; pages=$count; frame=$frame")
+                        pageInfo?.let { acceptReady(it) }
+                        dispatchFrame()
+                        native.invalidate()
+                    }
+                    .onError { error ->
+                        android.util.Log.e("HybridProof", "startup native-load-error", error)
+                        fail("Hybrid native renderer could not open this PDF. Your writing is retained.")
+                    }
+                    .onPageError { page, error ->
+                        android.util.Log.e("HybridProof", "startup native-page-error; page=$page", error)
+                        fail("Hybrid native page rendering failed. Your writing is retained.")
+                    }
                     .onPageChange { index, _ ->
                         pageIndex = index
-                        sentFrame = null
-                        ready = false
-                        pageInfo = null
-                        lastRestored = null
-                        overlays = emptyList()
+                        invalidateReadiness()
                     }
                     .onDrawAll { canvas, width, height, page -> if (!closed && page == native.currentPage) drawPage(canvas, width, height, page) }
                     .load()
@@ -160,16 +200,16 @@ class HybridPdfView(
         val observed = JSONObject().put("pageIndex", page).put("widthPx", width.toDouble()).put("heightPx", height.toDouble())
             .put("leftPx", origin[0].toDouble()).put("topPx", origin[1].toDouble())
             .put("density", resources.displayMetrics.density.toDouble()).put("zoom", native.zoom.toDouble())
-        frame = observed
-        val json = observed.toString()
-        if (sentFrame != json) {
-            sentFrame = json
+        if (handshake.observe(observed)) {
+            frame = handshake.frame
             ready = false
             lastRestored = null
+            lastSelection = null
             pageInfo = null
             overlays = emptyList()
-            web.post { if (!closed) web.evaluateJavascript("window.hybridFrame && window.hybridFrame($json)", null) }
+            android.util.Log.i("HybridProof", "startup native-frame; frame=$frame")
         }
+        dispatchFrame()
         val info = pageInfo ?: return
         if (info.optInt("pageIndex", -1) != page) return
         val location = drawingLocation ?: return
@@ -191,6 +231,49 @@ class HybridPdfView(
         overlays = drawn
     }
 
+    private fun invalidateReadiness() {
+        handshake.invalidate()
+        frame = null
+        ready = false
+        pageInfo = null
+        lastSelection = null
+        lastRestored = null
+        overlays = emptyList()
+    }
+
+    private fun dispatchFrame() {
+        if (closed || failure != null) return
+        val request = handshake.nextDispatch() ?: return
+        val id = request.getLong("requestId")
+        web.post {
+            if (closed || !handshake.matches(JSONObject().put("frame", request))) return@post
+            web.evaluateJavascript("(function(){if(typeof window.hybridFrame !== 'function') return false; window.hybridFrame($request); return true;})()") { result ->
+                if (!closed && handshake.acknowledge(id, result == "true")) {
+                    android.util.Log.i("HybridProof", "startup frame-delivery; request=$id; accepted=$result")
+                    if (result != "true") native.invalidate()
+                }
+            }
+        }
+    }
+
+    private fun acceptReady(message: JSONObject) {
+        if (closed || failure != null) return
+        if (!isCurrentFrame(message)) {
+            android.util.Log.i("HybridProof", "startup stale-ready-ignored; reported=${message.optJSONObject("frame")}; current=$frame")
+            return
+        }
+        pageInfo = message
+        ready = loaded
+        startupPhase = if (ready) "ready" else "text-ready-awaiting-native"
+        android.util.Log.i("HybridProof", "startup text-layer-ready; nativeLoaded=$loaded; frame=$frame")
+        if (ready) {
+            val unproven = CapabilityStatus.Unavailable("Disposable prototype; exactness gates are not accepted.")
+            event(ReaderEvent.Opened(source.id, ReaderCapabilities(CapabilityStatus.Available, unproven, unproven, unproven, CapabilityStatus.Available)))
+            (pendingLocation ?: drawingLocation)?.let { pendingLocation = it; applyRestore(it) }
+            native.invalidate()
+        }
+    }
+
     private inner class Bridge {
         @JavascriptInterface fun message(json: String) {
             if (json.length > 1_000_000) return
@@ -199,17 +282,18 @@ class HybridPdfView(
                 try {
                     val message = JSONObject(json)
                     when (message.getString("type")) {
-                        "ready" -> {
-                            if (!isCurrentFrame(message)) return@post
-                            pageInfo = message
-                            ready = loaded
-                            if (ready) {
-                                val unproven = CapabilityStatus.Unavailable("Disposable prototype; exactness gates are not accepted.")
-                                event(ReaderEvent.Opened(source.id, ReaderCapabilities(CapabilityStatus.Available, unproven, unproven, unproven, CapabilityStatus.Available)))
-                                (pendingLocation ?: drawingLocation)?.let { pendingLocation = it; applyRestore(it) }
-                                native.invalidate()
-                            }
+                        "scriptReady" -> {
+                            android.util.Log.i("HybridProof", "startup script-ready; loaded=$loaded; frame=$frame")
+                            handshake.receiverReady()
+                            dispatchFrame()
+                            native.invalidate()
                         }
+                        "diagnostic" -> {
+                            val stage = message.optString("stage", "unknown")
+                            startupDiagnostics.put(stage, message)
+                            android.util.Log.i("HybridProof", "startup js; $message")
+                        }
+                        "ready" -> acceptReady(message)
                         "selection", "restored" -> verified {
                             if (!isCurrentFrame(message)) return@verified
                             val payload = message.getJSONObject("payload")
@@ -232,7 +316,11 @@ class HybridPdfView(
                             native.invalidate()
                         }
                         "captureError" -> notice("Select a passage in the text layer before keeping it.")
-                        "error" -> fail("Hybrid selection layer: ${message.optString("message", "could not open PDF")}")
+                        "error" -> {
+                            if (message.optJSONObject("frame") == null || isCurrentFrame(message)) {
+                                fail("Hybrid selection layer: ${message.optString("message", "could not open PDF")}")
+                            } else android.util.Log.i("HybridProof", "startup stale-error-ignored; $message")
+                        }
                     }
                 } catch (_: Exception) { fail("Hybrid selection metadata is invalid. Your writing is retained.") }
             }
@@ -240,11 +328,9 @@ class HybridPdfView(
     }
 
     private fun isCurrentFrame(message: JSONObject): Boolean {
-        val reported = message.optJSONObject("frame") ?: return false
         val observed = frame ?: return false
-        return listOf("pageIndex", "widthPx", "heightPx", "leftPx", "topPx", "density", "zoom").all {
-            reported.optDouble(it, Double.NaN) == observed.getDouble(it)
-        }
+        return observed.optInt("pageIndex", -1) == native.currentPage &&
+            observed.optDouble("zoom", Double.NaN) == native.zoom.toDouble() && handshake.matches(message)
     }
 
     private fun verified(action: () -> Unit) {
@@ -266,11 +352,12 @@ class HybridPdfView(
     fun navigate(delta: Int) {
         if (!loaded) return
         drawingLocation = null
+        invalidateReadiness()
         native.jumpTo((native.currentPage + delta).coerceIn(0, pageCount - 1))
     }
     fun zoomToggle() {
         if (!loaded) return
-        lastRestored = null
+        invalidateReadiness()
         zoom = if (native.zoom < 1.5f) 2f else 1f
         native.zoomCenteredTo(zoom, android.graphics.PointF(width / 2f, height / 2f))
         native.loadPages()
@@ -283,7 +370,10 @@ class HybridPdfView(
             lastRestored = null
             val page = JSONObject(location.payloadJson).getInt("pageIndex")
             require(page < pageCount)
-            if (native.currentPage != page) native.jumpTo(page) else if (ready) applyRestore(location)
+            if (native.currentPage != page) {
+                invalidateReadiness()
+                native.jumpTo(page)
+            } else if (ready) applyRestore(location)
         }
     }
     private fun applyRestore(location: SavedLocation) {
@@ -292,7 +382,10 @@ class HybridPdfView(
     }
     private fun fail(message: String) {
         if (closed) return
-        ready = false; failure = message; drawingLocation = null; overlays = emptyList()
+        android.util.Log.e("HybridProof", "startup failed; nativeLoaded=$loaded; frame=$frame; $message")
+        startupPhase = "failed"
+        invalidateReadiness()
+        failure = message; drawingLocation = null
         event(ReaderEvent.Failed(source.id, message)); notice(message)
     }
     override fun close() {
@@ -302,7 +395,7 @@ class HybridPdfView(
         native.recycle()
     }
     companion object {
-        private val ASSETS = setOf("index.html", "selection.mjs", "selection-geometry.mjs", "pdf.mjs", "pdf.worker.mjs", "text_layer.css")
+        private val ASSETS = setOf("index.html", "bootstrap.js", "selection.mjs", "selection-geometry.mjs", "pdf.mjs", "pdf.worker.mjs", "text_layer.css")
     }
 }
 

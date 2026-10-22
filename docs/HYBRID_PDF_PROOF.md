@@ -2,7 +2,7 @@
 
 **PDF decision: NO SELECTION.** This owner-approved spike is disposable. Even an entirely passing focused run would require a separate owner decision and the remaining release gates before choosing an engine. Neither rejected comparison flavor is replaced.
 
-**The single approved CI attempt failed on both API 28 and API 37.** The reader never reached its combined native-renderer/text-layer ready state, so the run produced no accepted real-selection, alignment or saved-passage evidence. A separate fixture-setup error also blocked changed-file and recovery checks. No retry, threshold relaxation or post-run prototype fix was made.
+**The single approved CI attempt failed on both API 28 and API 37.** The reader never reached its combined native-renderer/text-layer ready state, so the run produced no accepted real-selection, alignment or saved-passage evidence. A separate fixture-setup error also blocked changed-file and recovery checks. The separately authorized local follow-up below does not rerun CI, relax thresholds, or change those outcomes.
 
 ## What the prototype tries
 
@@ -16,7 +16,7 @@ Both parsers receive the same checksum-verified app-owned file. Verification pre
 
 ## Exact inputs and dependencies
 
-- PDF.js **4.10.38**, the unmodified `legacy/build/pdf.mjs`, `legacy/build/pdf.worker.mjs` and `web/pdf_viewer.css` from [the versioned npm package](https://registry.npmjs.org/pdfjs-dist/-/pdfjs-dist-4.10.38.tgz). The tarball SHA-256 is `1011b38553532d7078c59f26b15a471f8dae00f101b60e2add9b8511737a1ce0`. [Asset hashes](../third_party/licenses/hybrid/pdfjs-4.10.38.sha256) and [license texts](../third_party/licenses/hybrid/) are retained; no runtime CDN is used.
+- PDF.js **4.10.38**, with untouched `legacy/build/pdf.mjs` and `legacy/build/pdf.worker.mjs` inputs retained under [third_party/vendor](../third_party/vendor/pdfjs-4.10.38/), and unmodified `web/pdf_viewer.css`, from [the versioned npm package](https://registry.npmjs.org/pdfjs-dist/-/pdfjs-dist-4.10.38.tgz). The tarball SHA-256 is `1011b38553532d7078c59f26b15a471f8dae00f101b60e2add9b8511737a1ce0`. The shipped JavaScript modules are deterministic **esbuild 0.25.12** transforms targeting **Chrome 69**, not the original runtime bytes. [Input hashes](../third_party/licenses/hybrid/pdfjs-4.10.38.sha256), [source/output build hashes](../app/src/hybrid/assets/hybrid/pdfjs-build.json), [pinned package inputs](../package-lock.json), [build script](../tools/build_hybrid_pdfjs.mjs) and [license texts](../third_party/licenses/hybrid/) are retained; no runtime CDN is used.
 - AndroidPdfViewer **3.1.0-beta.1**, `com.github.barteksc:android-pdf-viewer`, AAR SHA-256 `8c43d41d4f64f6bdd0077833d3b8bdddefa95bcfbd51923bfe0f033c1adbcaca`. The exact [tagged API](https://github.com/barteksc/AndroidPdfViewer/tree/3.1.0-beta.1) is used.
 - Its pinned `com.github.barteksc:pdfium-android:1.9.0` AAR SHA-256 is `2992e86cce9ad5576e9c47a99cc2ba8cb75777016944ad30fbed3d7b8f6caf3f`. These retired-JCenter coordinates are fetched through a group-restricted mirror and checked with strict Gradle SHA-256 verification. Standard Jetifier compatibility migration is enabled because original support-library classes collide with the app's AndroidX dependencies. The native engine is not substituted or upgraded.
 - The unchanged `rotated-cropped.pdf` and `repeated-two-page.pdf` are checked against the committed [fixture manifest](../app/src/androidTest/assets/fixtures/manifest.json). Generator font-box estimates are **not** reader-observed glyph geometry; acceptance compares actual DOM selection rectangles against independent public PDFium coordinate mapping and native drawn overlays. The repeated phrase must resolve to physical page index **1**, not its identical page-zero occurrence.
@@ -58,6 +58,42 @@ The runner did confirm actual process death and a new launcher PID: **5766 → a
 
 Raw [API 28 proof/metadata](evidence/hybrid-pdf-api-28/) and [API 37 proof/metadata](evidence/hybrid-pdf-api-37/) are retained with the run's [job outcomes](evidence/hybrid-pdf-run-39727581127.json). The full CI logs and original artifacts remain attached to the linked run. A diagnostic limitation matters: the workflow's post-action logcat collection ran after the emulator action had stopped its device and captured only `- waiting for device -`. It therefore cannot identify a JavaScript, font, native-loading or callback root cause. WebView 69 is a compatibility risk, but the evidence does **not** establish it as the cause, and API 37 also failed readiness. The app-files archives contained no staged capture marker or successful per-gate screenshots. Failure-state screenshots were retained separately; they are not selection proof.
 
-This approval is exhausted. Investigating/fixing readiness or harness isolation and running another device experiment would need a new authorization; neither is silently folded into this stop. There is no release-engine decision to make from this evidence.
+The one-run approval is exhausted. The owner subsequently authorized local compatibility fixes, startup-handshake instrumentation/hardening and fixture isolation, and then authorized committing and pushing that work to `main` only after local checks pass and the remote is confirmed unchanged. **No further device/emulator/CI experiment is authorized.** There is no release-engine decision to make from this evidence.
 
 Known same-book notebook passage-switch failures on API 28/37 and saved-capture reopening failure on API 28 are unchanged and are not attributed to this PDF spike. Tablet, spoken TalkBack, real ARM/16-KiB operation, native-source reproducibility, parser hardening, complete transitive legal clearance, performance and release acceptance are outside this focused run and remain unproven. The legacy native payload and installed WebView version are additional compatibility risks, not reasons to relax the gates.
+
+## Local follow-up: not a device pass
+
+The two first-party syntax defects in `selection.mjs`—optional chaining at the text-node endpoint and nullish coalescing in quotation restoration—were replaced with equivalent guarded access and explicit null/undefined checks. The local AST check now rejects those operators in both first-party selection modules.
+
+The original vendor modules contain **297 optional chains and 28 nullish operators in `pdf.mjs`**, and **194 and 4 respectively in `pdf.worker.mjs`**. First-party cleanup alone could not make those static imports parse on WebView 69. The shipped modules are now transpiled from the checksum-verified originals with the pinned toolchain; the local compatibility check requires Chrome 69-compatible grammar and records zero optional-chain/nullish operators in both outputs. This addresses the static syntax incompatibility only: browser APIs, fonts, native loading and actual WebView operation remain unvalidated. PDF.js, minSdk, the engine and exactness thresholds are not upgraded or replaced.
+
+The startup flow now waits for the JavaScript module to announce that its handlers are installed, and marks a frame delivered only after `evaluateJavascript` confirms actual receiver invocation. A monotonically increasing request ID accompanies the full observed native frame and is echoed in readiness/selection/restoration messages. Old delivery callbacks cannot consume a newer request, and old readiness cannot be accepted after page/zoom invalidation or a return to identical geometry. Navigation and programmatic zoom invalidate readiness immediately; incoming messages also check the live native page and zoom. If the text layer becomes ready before native loading completes, native `onLoad` rechecks that current metadata rather than silently losing combined readiness.
+
+`HybridProof` diagnostics now identify source verification, WebView page/resource failures, native loading failures, installed module handlers, document fetch/parse, worker mode, native frame requests, receiver invocation and text-layer completion. A classic pre-module bootstrap captures module/global errors even when module evaluation fails. The runner now collects logcat and a readiness summary while the app process is alive, before returning control to the emulator owner. Fixture setup removes only matching test-owned synthetic rows and their dependent data before reusing a checksum; production checksum uniqueness remains intact. These are preparations for a future separately approved experiment, **not an explanation or demonstrated fix for API 37's first-open failure**. Historical failed-run evidence is unchanged.
+
+The local verification boundary includes hybrid JVM tests, mocked Python tool tests, executable bootstrap/startup tests, Node geometry/restore assertions, runtime grammar/provenance/license checks, original vendor checksums, byte-for-byte regeneration, strict Gradle dependency verification, hybrid lint and both hybrid APK assemblies. Build completion is not a warning-free or release-readiness claim. The startup tests use the real first-party JavaScript module with substituted DOM/PDF-parser boundaries; JVM tests exercise the production frame-handshake state. They do not test a real WebView/native renderer, and native `onLoad`/JavaScript callback ordering is inspected rather than end-to-end runtime-proven. No emulator, device or CI run is part of this follow-up.
+
+Local commands (from the worktree root):
+
+```sh
+npm ci
+sha256sum --check third_party/licenses/hybrid/pdfjs-4.10.38.sha256
+sha256sum app/src/hybrid/assets/hybrid/{pdf.mjs,pdf.worker.mjs,pdfjs-build.json} > /tmp/hybrid-pdfjs-before.sha256
+npm run build:hybrid-pdfjs
+sha256sum --check /tmp/hybrid-pdfjs-before.sha256
+npm run test:hybrid-compatibility
+node tools/test_hybrid_bootstrap.mjs
+node --experimental-vm-modules tools/test_hybrid_startup.mjs
+node tools/test_hybrid_selection.mjs
+python3 -m unittest discover -s tools -p 'test_*.py' -v
+ANDROID_HOME=/home/ubuntu/android-sdk JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64 \
+  ./gradlew --dependency-verification=strict :app:testHybridDebugUnitTest :app:lintHybridDebug \
+  :app:assembleHybridDebug :app:assembleHybridDebugAndroidTest
+```
+
+Hybrid asset-merge, lint-model and lint-analysis tasks explicitly depend on PDF.js generation. The missing lint-analysis dependency was reproduced locally before correction; the complete strict lint/build invocation then passed, including app, unit-test and instrumentation lint analysis. The dispatch-only workflow now installs the pinned JavaScript tooling with `npm ci` before building; it was not dispatched. Timeout diagnostics tolerate an already-closed activity scenario so an old diagnostic callback cannot mask the original timeout. This test-helper guard is compiled locally, not device-validated.
+
+The final local checks passed: freshly executed JVM suites for AndroidX (**156** tests), ComposePDF (**155**) and hybrid (**162**), with zero failures/errors/skips; **96** Python tool tests; **5** fixture-generator tests; **3** bootstrap and **9** startup tests; Node selection geometry assertions; compatibility/provenance/license checks; strict hybrid lint and both APK assemblies. Lint reported **0 errors and 53 warnings**, so this is not a warning-free build. All ten packaged fixtures and their manifest records regenerated byte-for-byte; the large local-only PDF remained excluded. Original vendor checksums and generated PDF.js modules/build metadata were byte-reproducible. Archive-level inspection confirmed that the app APK contains the exact generated modules, build manifest, first-party scripts, original license notices and hybrid license files, and that the instrumentation APK contains the exact ten fixture payloads. Independent diff review found no additional source blocker; APK provenance was verified after that review. These are local checks only, not new selection, alignment, notebook or recovery evidence.
+
+The **≤1 PDF-point** and **≤2 dp** assertions, original fixture bytes, PDF/native engine versions, workflow triggers/API matrix and failed API 28/37 evidence remain unchanged. **PDF: NO SELECTION.**

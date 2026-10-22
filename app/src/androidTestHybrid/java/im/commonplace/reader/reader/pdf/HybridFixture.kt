@@ -5,6 +5,7 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Point
 import android.os.ParcelFileDescriptor
+import android.database.sqlite.SQLiteDatabase
 import android.util.Log
 import android.view.MotionEvent
 import android.view.View
@@ -43,6 +44,7 @@ internal object HybridFixture {
     val container get() = (context as CommonplaceApplication).container
     private val instrumentation get() = InstrumentationRegistry.getInstrumentation()
     private val testContext get() = instrumentation.context
+    private var latestDiagnostic: (() -> String)? = null
 
     fun manifestEntry(name: String): JSONObject {
         val manifest = testContext.assets.open("fixtures/manifest.json").bufferedReader().use { JSONObject(it.readText()) }
@@ -67,10 +69,37 @@ internal object HybridFixture {
         val checksum = digest.digest().joinToString("") { "%02x".format(it) }
         assertEquals("Fixture bytes must match the checked-in manifest", expected.getString("sha256"), checksum)
         assertEquals("Fixture size must match the checked-in manifest", expected.getLong("bytes"), file.length())
+        removePriorSyntheticFixture(checksum, "content://synthetic/$name")
         val source = SourceEntity(id, "Hybrid PDF proof", null, DocumentFormat.PDF, "content://synthetic/$name", checksum,
             "imports/assets/$id.pdf", SourceAvailability.AVAILABLE, 1, 1)
         runBlocking(Dispatchers.IO) { container.database.readerDao().insertSource(source) }
         return source
+    }
+
+    /** Remove only this exact test-owned fixture row; production checksum uniqueness stays intact. */
+    private fun removePriorSyntheticFixture(checksum: String, originalUri: String) {
+        val db = container.database.openHelper.writableDatabase
+        val stalePaths = mutableListOf<String>()
+        db.beginTransaction()
+        try {
+            db.query("SELECT id, assetPath FROM sources WHERE checksum = ? AND originalUri = ?",
+                arrayOf(checksum, originalUri)).use { cursor ->
+                while (cursor.moveToNext()) stalePaths += cursor.getString(1)
+            }
+            db.execSQL("DELETE FROM entries WHERE sourceId IN (SELECT id FROM sources WHERE checksum = ? AND originalUri = ?)",
+                arrayOf(checksum, originalUri))
+            db.execSQL("DELETE FROM bookmarks WHERE sourceId IN (SELECT id FROM sources WHERE checksum = ? AND originalUri = ?)",
+                arrayOf(checksum, originalUri))
+            db.execSQL("DELETE FROM reading_state WHERE sourceId IN (SELECT id FROM sources WHERE checksum = ? AND originalUri = ?)",
+                arrayOf(checksum, originalUri))
+            db.execSQL("DELETE FROM reader_drafts WHERE sourceId IN (SELECT id FROM sources WHERE checksum = ? AND originalUri = ?)",
+                arrayOf(checksum, originalUri))
+            db.execSQL("DELETE FROM sources WHERE checksum = ? AND originalUri = ?", arrayOf(checksum, originalUri))
+            db.setTransactionSuccessful()
+        } finally {
+            db.endTransaction()
+        }
+        stalePaths.filter { it.startsWith("imports/assets/") }.forEach { File(context.filesDir, it).delete() }
     }
 
     fun sourceFile(source: SourceEntity) = File(context.filesDir, source.assetPath)
@@ -95,20 +124,57 @@ internal object HybridFixture {
 
     fun host(scenario: ActivityScenario<ReaderActivity>, timeoutMs: Long = 30_000): HybridPdfView {
         var found: HybridPdfView? = null
-        await("HybridPdfView attachment and both-engine ready state", timeoutMs) {
+        await("HybridPdfView attachment and both-engine ready state", timeoutMs, diagnostic = {
+            diagnosticFor(scenario)
+        }) {
             scenario.onActivity { found = findHost(it.window.decorView)?.takeIf { view -> view.ready } }
             found != null
         }
-        return requireNotNull(found)
+        val readyHost = requireNotNull(found)
+        latestDiagnostic = { diagnosticFor(scenario) }
+        assertStartupAndWorker(scenario, readyHost)
+        return readyHost
     }
 
-    fun await(description: String, timeoutMs: Long = 20_000, condition: () -> Boolean) {
+    private fun diagnosticFor(scenario: ActivityScenario<ReaderActivity>): String {
+        return try {
+            val host = findHostIn(scenario) ?: return "HybridPdfView not attached"
+            var result = ""
+            scenario.onActivity { result = host.diagnosticSnapshot().toString() }
+            result
+        } catch (_: IllegalStateException) {
+            "HybridPdfView diagnostics unavailable: activity scenario is no longer active"
+        }
+    }
+
+    fun await(description: String, timeoutMs: Long = 20_000,
+               diagnostic: () -> String = { latestDiagnostic?.invoke() ?: "no HybridPdfView diagnostics yet" },
+               condition: () -> Boolean) {
         val deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(timeoutMs)
         while (System.nanoTime() < deadline) {
             if (condition()) return
             Thread.sleep(40)
         }
-        assertTrue("Timed out: $description", condition())
+        assertTrue("Timed out: $description; diagnosticSnapshot=${diagnostic()}", condition())
+    }
+
+    fun assertStartupAndWorker(scenario: ActivityScenario<ReaderActivity>, host: HybridPdfView) {
+        var snapshot: JSONObject? = null
+        scenario.onActivity { snapshot = host.diagnosticSnapshot() }
+        val observed = requireNotNull(snapshot)
+        assertTrue("Hybrid host ready evidence: $observed", observed.optBoolean("ready"))
+        assertTrue("Native renderer must have completed its first open: $observed", observed.optBoolean("nativeLoaded"))
+        assertTrue("A completed open must not retain a startup failure: $observed", observed.isNull("failure"))
+        assertNotNull("The first PDF.js page must be parsed before startup passes: $observed", host.pageInfo)
+        assertEquals("The first open must parse page zero before any navigation", 0, host.pageInfo!!.optInt("pageIndex", -1))
+        val javascript = observed.optJSONObject("javascript")
+        assertNotNull("PDF.js startup diagnostics must be present: $observed", javascript)
+        assertNotNull("PDF.js document-loaded diagnostic is required: $observed", javascript!!.optJSONObject("document-loaded"))
+        val worker = javascript.optJSONObject("worker-ready")
+        assertNotNull("PDF.js worker-ready diagnostic is required: $observed", worker)
+        assertEquals("Pinned PDF.js build is expected to use its explicit in-process worker handler",
+            "in-process", worker!!.optString("workerMode"))
+        Log.i("HybridProof", "PASS gate=first-open-parse-worker; workerMode=${worker.optString("workerMode")}; snapshot=$observed")
     }
 
     fun evaluate(web: WebView, javascript: String): JSONObject {

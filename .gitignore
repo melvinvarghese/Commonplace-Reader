@@ -17,3 +17,6 @@ local.properties
 
 # Local Python test bytecode
 __pycache__/
+
+# Local JavaScript tooling dependencies
+/node_modules/

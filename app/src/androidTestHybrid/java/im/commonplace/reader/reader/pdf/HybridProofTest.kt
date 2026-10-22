@@ -28,6 +28,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
+import org.junit.Assert.assertNotEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -65,11 +66,15 @@ class HybridProofTest {
     }
 
     private fun realGestureAndNativeRender() {
+        val firstCopy = HybridFixture.source("ordinary-text.pdf")
         val source = HybridFixture.source("ordinary-text.pdf")
+        assertNotEquals("Test fixture rows must be isolated before reusing a unique production checksum", firstCopy.id, source.id)
+        assertEquals("Fixture isolation must retain the actual content checksum", firstCopy.checksum, source.checksum)
         val quotation = "A quiet synthetic page for local reader testing."
         launch(source.id).use { scenario ->
             waitFor { HybridFixture.state(scenario).phase != ReaderPhase.Opening }
             val host = HybridFixture.host(scenario)
+            HybridFixture.assertStartupAndWorker(scenario, host)
             assertTrue(host.ready)
             assertEquals(1, host.pageCount)
             assertNull("A completed host must not hide its render/JS failure", host.failure)
