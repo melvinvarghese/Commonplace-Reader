@@ -37,7 +37,6 @@ import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 
@@ -69,10 +68,9 @@ fun LibraryScreen(contentPadding: PaddingValues) {
         item {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
-                    text = "A HOME FOR THE IDEAS YOU KEEP",
+                    text = "Your reading room",
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.primary,
-                    letterSpacing = 1.4.sp,
                     fontWeight = FontWeight.SemiBold,
                 )
                 Text(
@@ -83,7 +81,7 @@ fun LibraryScreen(contentPadding: PaddingValues) {
                     fontWeight = FontWeight.Medium,
                 )
                 Text(
-                    text = "A quiet place for the books you’re reading.",
+                    text = "Books to return to. Ideas to keep.",
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -91,20 +89,27 @@ fun LibraryScreen(contentPadding: PaddingValues) {
         }
 
         item {
-            Button(
-                onClick = { picker.launch(arrayOf("application/pdf", "application/epub+zip")) },
-                enabled = !importing && state !is LibraryUiState.Loading && state !is LibraryUiState.Error,
-                modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
-            ) { Text(if (importing) "Importing…" else "Import PDF or EPUB") }
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Button(
+                    onClick = { picker.launch(arrayOf("application/pdf", "application/epub+zip")) },
+                    enabled = !importing && state !is LibraryUiState.Loading && state !is LibraryUiState.Error,
+                    shape = MaterialTheme.shapes.medium,
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
+                ) { Text(if (importing) "Adding to this device…" else "Import PDF or EPUB") }
+                Text("PDFs and EPUBs stay on this device. Nothing is uploaded.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
         }
         val books = state as? LibraryUiState.Books
         if (books != null) {
             items(books.sources, key = { it.id }) { source ->
                 Surface(onClick = { viewModel.openExisting(source.id) }, modifier = Modifier.fillMaxWidth(),
-                    shape = MaterialTheme.shapes.large, tonalElevation = 1.dp) {
+                    shape = MaterialTheme.shapes.medium, tonalElevation = 0.dp) {
                     Column(Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(source.title, style = MaterialTheme.typography.titleLarge)
-                        Text(if (source.availability == SourceAvailability.AVAILABLE) "${source.format.name} · Stored on this device" else "Document missing · Writing retained")
+                        Text(if (source.availability == SourceAvailability.AVAILABLE) "${source.format.name} · Stored on this device" else "Document missing · Writing retained",
+                            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             }
@@ -115,7 +120,7 @@ fun LibraryScreen(contentPadding: PaddingValues) {
                     .semantics { testTag = "library-empty-card" },
                 shape = MaterialTheme.shapes.large,
                 color = MaterialTheme.colorScheme.surface,
-                tonalElevation = 1.dp,
+                tonalElevation = 0.dp,
             ) {
                 when (val current = state) {
                     LibraryUiState.Empty -> EmptyLibraryState()
@@ -130,14 +135,14 @@ fun LibraryScreen(contentPadding: PaddingValues) {
         AlertDialog(
             onDismissRequest = viewModel::dismissResult,
             title = { Text(when (outcome) {
-                is ImportResult.Imported -> "Document imported"
+                is ImportResult.Imported -> "Added to your library"
                 is ImportResult.Duplicate -> "Already in your library"
                 is ImportResult.Unsupported -> "Unsupported document"
                 is ImportResult.Failed -> "Import failed"
             }) },
             text = { Text(when (outcome) {
-                is ImportResult.Imported -> "A complete copy is stored on this device. The original was not changed."
-                is ImportResult.Duplicate -> "This exact document is already in your library."
+                is ImportResult.Imported -> "This book stays on your device. Nothing was uploaded. The original file is unchanged."
+                is ImportResult.Duplicate -> "This exact document is already stored on this device. No second copy was added."
                 is ImportResult.Unsupported -> outcome.reason
                 is ImportResult.Failed -> outcome.reason
             }) },
@@ -183,17 +188,15 @@ private fun EmptyLibraryState() {
         )
         Spacer(Modifier.height(8.dp))
         Text(
-            text = "Your reading room is ready when you are.",
+            text = "Add a book to begin reading.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Spacer(Modifier.height(18.dp))
         Text(
-            text = "CHOOSE A PDF OR EPUB ABOVE",
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.secondary,
-            letterSpacing = 1.1.sp,
-            fontWeight = FontWeight.SemiBold,
+            text = "Your library is stored locally.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
 }

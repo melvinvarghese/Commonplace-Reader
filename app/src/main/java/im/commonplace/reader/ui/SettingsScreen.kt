@@ -17,7 +17,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 
 @Composable
 fun SettingsScreen(contentPadding: PaddingValues) {
@@ -36,10 +35,9 @@ fun SettingsScreen(contentPadding: PaddingValues) {
         item {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
-                    text = "YOUR READING LIFE, YOURS",
+                    text = "On this device",
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.primary,
-                    letterSpacing = 1.4.sp,
                     fontWeight = FontWeight.SemiBold,
                 )
                 Text(
@@ -54,13 +52,13 @@ fun SettingsScreen(contentPadding: PaddingValues) {
         item {
             StatusCard(
                 title = "Offline and private",
-                detail = "No account is needed. Local reading and private storage are being built first.",
+                detail = "Your imported books and entries stay on this device. No account is needed and nothing is uploaded.",
             )
         }
         item {
             StatusCard(
                 title = "Backup and export",
-                detail = "Not available in this foundation build. Nothing is uploaded or exported.",
+                detail = "Backup and export are not available in this build. Keep your original book files; app data is stored only on this device.",
             )
         }
         item {
@@ -79,7 +77,7 @@ private fun StatusCard(title: String, detail: String) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         shape = MaterialTheme.shapes.large,
     ) {
         Column(

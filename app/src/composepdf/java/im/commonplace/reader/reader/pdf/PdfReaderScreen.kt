@@ -12,6 +12,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.fragment.app.FragmentActivity
 import dev.nucleusframework.pdfium.PdfPage
@@ -34,21 +35,28 @@ fun PdfReaderScreen(activity: FragmentActivity, model: ReaderViewModel, state: R
     }
     LaunchedEffect(host) { host?.open() }
     DisposableEffect(host) { onDispose { host?.close() } }
-    Surface(Modifier.fillMaxSize()) {
+    Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surface) {
         Column(Modifier.fillMaxSize().safeDrawingPadding().imePadding()) {
-            Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                 TextButton(onClick = onLibrary, modifier = Modifier.heightIn(min = 48.dp)) { Text("Library") }
-                Text(source?.title ?: "Opening PDF", style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
+                Text(source?.title ?: "Opening PDF", style = MaterialTheme.typography.titleLarge, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
             }
-            Text("Experimental comparison only. Precise capture, saved highlights, bookmarks and progress are not proven.",
-                style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(horizontal = 16.dp))
+            Surface(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 2.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant,
+                shape = MaterialTheme.shapes.small
+            ) {
+                Text("PDF text selection is unavailable. Search and saved notes still work.",
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp))
+            }
             Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                 TextButton(onClick = { host?.navigate(-1) }, enabled = host?.ready == true && host.pageIndex > 0, modifier = Modifier.heightIn(min = 48.dp)) { Text("Previous page") }
                 TextButton(onClick = { host?.navigate(1) }, enabled = host?.ready == true && host.pageIndex + 1 < native.pageCount, modifier = Modifier.heightIn(min = 48.dp)) { Text("Next page") }
+                if (host?.ready == true) Text("Page ${host.pageIndex + 1} of ${native.pageCount}", modifier = Modifier.padding(horizontal = 8.dp), style = MaterialTheme.typography.bodySmall)
                 TextButton(onClick = { host?.zoomIn() }, enabled = host?.ready == true, modifier = Modifier.heightIn(min = 48.dp)) { Text("Zoom in") }
-                Text(if (host?.zoom == 2f) "Zoom 2×" else "Zoom 1×")
+                Text(if (host?.zoom == 2f) "Zoom 2×" else "Zoom 1×", style = MaterialTheme.typography.bodySmall)
             }
-            if (host?.ready == true) Text("Page ${host.pageIndex + 1} of ${native.pageCount}", modifier = Modifier.padding(horizontal = 16.dp))
             (state.message ?: notice)?.let { message ->
                 Text(message, modifier = Modifier.fillMaxWidth().heightIn(max = 96.dp).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 4.dp), style = MaterialTheme.typography.bodySmall)
             }
@@ -62,14 +70,13 @@ fun PdfReaderScreen(activity: FragmentActivity, model: ReaderViewModel, state: R
                 if (host.matchingPages.isNotEmpty()) Text("Matches on physical pages: ${host.matchingPages.joinToString(", ") { (it + 1).toString() }}", modifier = Modifier.padding(horizontal = 16.dp))
                 Text(result, modifier = Modifier.fillMaxWidth().heightIn(max = 96.dp).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp).testTag("pdf-search-result"))
             }
-            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 8.dp)) {
-                TextButton(onClick = {}, enabled = false, modifier = Modifier.heightIn(min = 48.dp)) { Text("Keep selected passage") }
-                TextButton(onClick = {}, enabled = false, modifier = Modifier.heightIn(min = 48.dp)) { Text("Bookmark") }
+            Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                 TextButton(onClick = { savedItems = !savedItems }, enabled = source != null, modifier = Modifier.heightIn(min = 48.dp)) { Text("Saved items") }
             }
             if (savedItems) {
-                Column(Modifier.fillMaxWidth().heightIn(max = 240.dp).verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(Modifier.fillMaxWidth().heightIn(max = 240.dp).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("Saved items for this PDF", style = MaterialTheme.typography.titleMedium)
+                    Text("Highlights and bookmarks can't be created here; saved PDF locations are unresolved.", style = MaterialTheme.typography.bodySmall)
                     if (state.entries.isEmpty() && state.bookmarks.isEmpty()) Text("No saved items yet.")
                     state.entries.forEach { entry ->
                         entry.quotation?.let { Text(it) }
@@ -86,13 +93,19 @@ fun PdfReaderScreen(activity: FragmentActivity, model: ReaderViewModel, state: R
                     Text("Annotations save only after confirmation; unsaved annotation text is not autosaved.", style = MaterialTheme.typography.bodySmall)
                 }
             }
-            Box(Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.TopCenter) {
-                if (host?.ready == true) {
-                    PdfPage(native, host.pageIndex,
-                        modifier = Modifier.fillMaxWidth().graphicsLayer { scaleX = host.zoom; scaleY = host.zoom; clip = true }
-                            .testTag("nucleus-pdf-page").semantics { contentDescription = "PDF page ${host.pageIndex + 1} of ${native.pageCount}" },
-                        selectableText = false, linksEnabled = false, onLinkClick = { true })
-                } else if (state.phase == ReaderPhase.Opening) CircularProgressIndicator(Modifier.padding(24.dp))
+            Surface(
+                modifier = Modifier.fillMaxWidth().weight(1f).padding(horizontal = 12.dp, vertical = 8.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant,
+                shape = MaterialTheme.shapes.medium
+            ) {
+                Box(Modifier.fillMaxSize().padding(8.dp), contentAlignment = Alignment.TopCenter) {
+                    if (host?.ready == true) {
+                        PdfPage(native, host.pageIndex,
+                            modifier = Modifier.fillMaxWidth().graphicsLayer { scaleX = host.zoom; scaleY = host.zoom; clip = true }
+                                .testTag("nucleus-pdf-page").semantics { contentDescription = "PDF page ${host.pageIndex + 1} of ${native.pageCount}" },
+                            selectableText = false, linksEnabled = false, onLinkClick = { true })
+                    } else if (state.phase == ReaderPhase.Opening) CircularProgressIndicator(Modifier.padding(24.dp))
+                }
             }
         }
     }
