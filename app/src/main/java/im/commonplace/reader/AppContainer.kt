@@ -7,6 +7,7 @@ import im.commonplace.reader.data.ReaderPreferences
 import im.commonplace.reader.data.CommonplaceDatabase
 import im.commonplace.reader.data.ReaderRepository
 import im.commonplace.reader.data.MIGRATION_1_2
+import im.commonplace.reader.data.NotebookRepository
 import im.commonplace.reader.imports.DocumentImporter
 
 private val Context.readerDataStore by preferencesDataStore(name = "reader")
@@ -22,6 +23,7 @@ class AppContainer(context: Context) {
     }
     val readerPreferences: ReaderPreferences by lazy { ReaderPreferences(applicationContext.readerDataStore) }
     val readerRepository: ReaderRepository by lazy { ReaderRepository(database) }
+    val notebookRepository: NotebookRepository by lazy { NotebookRepository(database) }
     val documentImporter: DocumentImporter by lazy {
         DocumentImporter(applicationContext.contentResolver, applicationContext.filesDir, readerRepository)
     }
