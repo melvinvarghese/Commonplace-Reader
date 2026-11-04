@@ -228,7 +228,7 @@ class ReadiumHost(
             // Pinned Readium resolves each decoration's DOM Range using its locator,
             // including quotation context. Read that exact range, not a guessed page
             // or another occurrence of the quotation. No document/selection mutation.
-            val visible="""(function(){try{var d=readium.getDecorations('commonplace-highlights').items.find(function(x){return x.decoration.id===${JSONObject.quote(entryId)};});if(!d)return false;var r=Array.from(d.range.getClientRects()).find(function(x){return x.width>0&&x.height>0;});return !!r&&r.left>=0&&r.top>=0&&r.right<=innerWidth&&r.bottom<=innerHeight;}catch(e){return false;}})()"""
+            val visible="""(function(){try{var d=readium.getDecorations('commonplace-highlights').items.find(function(x){return x.decoration.id===${JSONObject.quote(entryId)};});if(!d)return false;return Array.from(d.range.getClientRects()).some(function(r){return r.width>0&&r.height>0&&r.right>0&&r.bottom>0&&r.left<innerWidth&&r.top<innerHeight;});}catch(e){return false;}})()"""
             val alreadyVisible=native.evaluateJavascript(visible)=="true"
             val beforeJump=lastNativeLocator?.let { ReadiumLocations.encode(it.toJSON().toString()) }
             if(!native.go(target,animated=false)) return null
